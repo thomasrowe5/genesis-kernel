@@ -163,45 +163,38 @@ genesis_knowledge_nodes_total = Gauge(
     "Number of nodes tracked in the knowledge graph.",
 )
 
-# Planetary meta-network observability.
-genesis_metanet_federations_total = Gauge(
-    "genesis_metanet_federations_total",
-    "Federations currently participating in the planetary meta-network.",
+# Civilization layer instrumentation.
+genesis_federation_peers_total = Gauge(
+    "genesis_federation_peers_total",
+    "Total number of peers registered in the federation mesh.",
 )
 
-genesis_treaties_active_total = Gauge(
-    "genesis_treaties_active_total",
-    "Number of active treaties across the planetary meta-network.",
+genesis_consensus_rounds_total = Counter(
+    "genesis_consensus_rounds_total",
+    "Number of consensus rounds executed by the federation.",
+    labelnames=("state",),
 )
 
-genesis_exchanges_total = Counter(
-    "genesis_exchanges_total",
-    "Total number of inter-federation exchange transactions committed.",
+genesis_economy_tx_total = Counter(
+    "genesis_economy_tx_total",
+    "Economy ledger transactions grouped by reason.",
+    labelnames=("reason",),
 )
 
-genesis_adaptation_cycles_total = Counter(
-    "genesis_adaptation_cycles_total",
-    "Adaptation cycles executed by the global coordination engine.",
+genesis_ethics_violations_total = Counter(
+    "genesis_ethics_violations_total",
+    "Ethics violations detected by the civilization auditor.",
+    labelnames=("principle",),
 )
 
-genesis_law_cases_total = Counter(
-    "genesis_law_cases_total",
-    "Court cases adjudicated by the planetary law engine.",
+genesis_replica_boots_total = Counter(
+    "genesis_replica_boots_total",
+    "Replica bootstrap operations executed across the federation.",
 )
 
-genesis_global_energy_mwh = Gauge(
-    "genesis_global_energy_mwh",
-    "Rolling energy consumption observed across the federations (MWh).",
-)
-
-genesis_latency_mean_ms = Gauge(
-    "genesis_latency_mean_ms",
-    "Mean latency (ms) across active federation links.",
-)
-
-genesis_peace_index = Gauge(
-    "genesis_peace_index",
-    "Composite peace index derived from active treaties and disputes.",
+genesis_self_repair_events_total = Counter(
+    "genesis_self_repair_events_total",
+    "Self repair events triggered by lifecycle management.",
 )
 
 __all__ = [
@@ -230,13 +223,11 @@ __all__ = [
     "genesis_theorist_updates_total",
     "genesis_publications_total",
     "genesis_knowledge_nodes_total",
-    "genesis_metanet_federations_total",
-    "genesis_treaties_active_total",
-    "genesis_exchanges_total",
-    "genesis_adaptation_cycles_total",
-    "genesis_law_cases_total",
-    "genesis_global_energy_mwh",
-    "genesis_latency_mean_ms",
-    "genesis_peace_index",
+    "genesis_federation_peers_total",
+    "genesis_consensus_rounds_total",
+    "genesis_economy_tx_total",
+    "genesis_ethics_violations_total",
+    "genesis_replica_boots_total",
+    "genesis_self_repair_events_total",
 ]
 
