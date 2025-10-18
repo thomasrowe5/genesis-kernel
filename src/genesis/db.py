@@ -1,7 +1,6 @@
 """Database helpers for creating SQLModel engines and sessions."""
 from __future__ import annotations
 
-import os
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -14,11 +13,12 @@ except Exception:  # pragma: no cover - fallback when SQLModel unavailable
         raise RuntimeError("SQLModel is not available in this environment")
 
 
-DEFAULT_DATABASE_URL = "sqlite:///./genesis.db"
+from genesis.core.config import get_settings
 
 
 def get_engine(database_url: str | None = None):
-    url = database_url or os.getenv("GENESIS_DATABASE_URL", DEFAULT_DATABASE_URL)
+    settings = get_settings()
+    url = database_url or settings.database_url
     connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
     return create_engine(url, connect_args=connect_args)
 

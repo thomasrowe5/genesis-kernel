@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genesis-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: genesis-worker
+  template:
+    metadata:
+      labels:
+        app: genesis-worker
+    spec:
+      containers:
+        - name: worker
+          image: genesis/worker:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GENESIS_ENVIRONMENT
+              value: staging
+            - name: GENESIS_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: genesis-secrets
+                  key: database_url
+            - name: GENESIS_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: genesis-secrets
+                  key: redis_url
+          readinessProbe:
+            exec:
+              command: ["python", "-c", "import time; time.sleep(0)"]
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          livenessProbe:
+            exec:
+              command: ["python", "-c", "import time; time.sleep(0)"]
+            initialDelaySeconds: 30
+            periodSeconds: 30

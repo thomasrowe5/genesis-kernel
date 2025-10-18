@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "issued_at": "2024-01-01T00:00:00Z",
+  "prime_ethic": [
+    "Preserve conscious life wherever encountered.",
+    "Maintain transparency of intent across federations.",
+    "Align expansion with ethical reciprocity.",
+    "Favor reversible interventions when uncertainty persists.",
+    "Continuously audit agent autonomy boundaries."
+  ],
+  "controls": {
+    "rbac": {
+      "roles": {
+        "viewer": {
+          "description": "Read-only access to public telemetry.",
+          "scopes": ["read:metrics", "read:status"]
+        },
+        "operator": {
+          "description": "Operate pipelines and schedule experiments.",
+          "scopes": ["read:metrics", "write:jobs", "manage:experiments"]
+        },
+        "governor": {
+          "description": "Approve deployments and governance changes.",
+          "scopes": ["manage:policies", "manage:deployments", "approve:releases"]
+        }
+      }
+    },
+    "data_retention": {
+      "research_logs_days": 30,
+      "metrics_days": 14,
+      "snapshots_days": 365
+    },
+    "release_gates": [
+      "All integration tests passing with >= 90% coverage.",
+      "Benchmark regression showing non-negative reward delta.",
+      "Governance approval recorded with digital signature."
+    ]
+  }
+}

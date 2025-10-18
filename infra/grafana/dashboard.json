@@ -1,0 +1,58 @@
+{
+  "title": "Genesis Overview",
+  "timezone": "browser",
+  "panels": [
+    {
+      "title": "Jobs per second",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "genesis_system_jobs_per_sec"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 7}
+    },
+    {
+      "title": "Latency p95",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "genesis_system_latency_p95"
+        }
+      ],
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 7}
+    },
+    {
+      "title": "RL Reward Delta",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "genesis_rl_reward_delta"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 7, "w": 12, "h": 7}
+    },
+    {
+      "title": "API Errors",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "genesis_api_errors_total"
+        }
+      ],
+      "gridPos": {"x": 12, "y": 7, "w": 12, "h": 7}
+    },
+    {
+      "title": "Worker Uptime",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "genesis_worker_uptime_seconds"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 14, "w": 24, "h": 7}
+    }
+  ],
+  "schemaVersion": 38,
+  "version": 1
+}

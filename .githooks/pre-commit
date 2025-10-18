@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if git config --get commit.gpgsign | grep -qi 'true'; then
+  exit 0
+fi
+
+echo "[Genesis] Signed commits are required. Enable signing with 'git config commit.gpgsign true'." >&2
+echo "Set GENESIS_ALLOW_UNSIGNED=1 to bypass (CI environments only)." >&2
+
+if [[ "${GENESIS_ALLOW_UNSIGNED:-}" == "1" ]]; then
+  exit 0
+fi
+
+exit 1
