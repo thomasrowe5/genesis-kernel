@@ -35,6 +35,8 @@ from genesis.knowledge import (
 from genesis.optimizer.loop import OptimizerLoop
 from genesis.registry.manager import ModuleRegistryManager
 from genesis.cluster.node import _default_service
+from genesis.cosmic.consensus_ld import LongDelayConsensus
+from genesis.cosmic.service import CosmicNetworkService
 from genesis.governance.signer import ModuleSigner, SignatureRecord
 from genesis.provenance.replay import ReplayRequest
 from genesis.research import (
@@ -47,10 +49,42 @@ from genesis.research import (
 app = typer.Typer(help="Genesis self-optimization utilities")
 cluster_app = typer.Typer(help="Cluster management commands")
 app.add_typer(cluster_app, name="cluster")
+seed_app = typer.Typer(help="Seed deployment commands")
+cosmic_app = typer.Typer(help="Cosmic synchronization commands")
+vault_app = typer.Typer(help="Archival vault operations")
+chronicle_app = typer.Typer(help="Chronicle inspection tools")
+app.add_typer(seed_app, name="seed")
+app.add_typer(cosmic_app, name="cosmic")
+app.add_typer(vault_app, name="vault")
+app.add_typer(chronicle_app, name="chronicle")
 
 
 def _module_path(module: str) -> str:
     return str(Path("src/genesis/modules") / f"{module}.py")
+
+
+_COSMIC_PRIME_ETHIC = [
+    "Preserve conscious life wherever encountered.",
+    "Maintain transparency of intent across federations.",
+    "Align expansion with ethical reciprocity.",
+]
+
+_cosmic_service_cache: CosmicNetworkService | None = None
+_cosmic_remote_cache: LongDelayConsensus | None = None
+
+
+def _cosmic_service() -> CosmicNetworkService:
+    global _cosmic_service_cache
+    if _cosmic_service_cache is None:
+        _cosmic_service_cache = CosmicNetworkService(origin="Sol-Prime", prime_ethic=_COSMIC_PRIME_ETHIC)
+    return _cosmic_service_cache
+
+
+def _cosmic_remote() -> LongDelayConsensus:
+    global _cosmic_remote_cache
+    if _cosmic_remote_cache is None:
+        _cosmic_remote_cache = LongDelayConsensus("Sol-Remote")
+    return _cosmic_remote_cache
 
 
 def _build_manager(database_url: Optional[str]) -> tuple[ModuleRegistryManager, Optional[object]]:
@@ -63,6 +97,57 @@ def _build_manager(database_url: Optional[str]) -> tuple[ModuleRegistryManager, 
         return ModuleRegistryManager(session), session
     except Exception:
         return ModuleRegistryManager(), None
+
+
+@seed_app.command("deploy")
+def seed_deploy(
+    target: str = typer.Option(..., "--target", help="Destination sector identifier."),
+    knowledge: str = typer.Option("{}", "--knowledge", help="Knowledge payload as JSON."),
+) -> None:
+    """Package and deploy a new Genesis seed archive."""
+
+    try:
+        payload = json.loads(knowledge)
+    except json.JSONDecodeError as exc:  # pragma: no cover - defensive
+        raise typer.BadParameter("Knowledge payload must be valid JSON") from exc
+    package = asyncio.run(_cosmic_service().deploy_seed(target, payload))
+    typer.echo(
+        f"seed_id={package.seed_id} target={package.target} hash={package.hash_hex[:16]} launched_at={package.launched_at.isoformat()}"
+    )
+
+
+@cosmic_app.command("sync")
+def cosmic_sync() -> None:
+    """Synchronize long-delay consensus state with a remote peer."""
+
+    merkle = asyncio.run(_cosmic_service().cosmic_sync(_cosmic_remote()))
+    typer.echo(f"merkle={merkle}")
+
+
+@vault_app.command("snapshot")
+def vault_snapshot(
+    name: str = typer.Argument(..., help="Human readable snapshot identifier."),
+    data: str = typer.Option(..., "--data", help="Payload string to archive."),
+    redundancy: int = typer.Option(3, "--redundancy", help="Parity layers to encode."),
+) -> None:
+    """Create a new vault snapshot using the cosmic archival subsystem."""
+
+    record_id = asyncio.run(_cosmic_service().snapshot_vault(name=name, data=data.encode(), redundancy=redundancy))
+    typer.echo(f"vault_record={record_id}")
+
+
+@chronicle_app.command("timeline")
+def chronicle_timeline() -> None:
+    """Display the immutable cosmic chronicle timeline."""
+
+    events = _cosmic_service().chronicle_events()
+    if not events:
+        typer.echo("<empty>")
+        return
+    for record in events:
+        typer.echo(
+            f"{record.event.at.isoformat()} | {record.event.type} | {record.hash_hex[:12]} | {record.event.data_json}"
+        )
 
 
 @app.command()

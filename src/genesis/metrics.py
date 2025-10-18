@@ -163,6 +163,43 @@ genesis_knowledge_nodes_total = Gauge(
     "Number of nodes tracked in the knowledge graph.",
 )
 
+# Cosmic expansion metrics.
+genesis_seeds_total = Counter(
+    "genesis_seeds_total",
+    "Number of interstellar seeds packaged for deployment.",
+)
+
+genesis_branches_total = Counter(
+    "genesis_branches_total",
+    "Total number of civilization branches created via speciation.",
+)
+
+genesis_vault_records_total = Counter(
+    "genesis_vault_records_total",
+    "Count of archival vault records created for long-term storage.",
+)
+
+genesis_chronicle_events_total = Counter(
+    "genesis_chronicle_events_total",
+    "Events appended to the interstellar chronicle ledger.",
+)
+
+genesis_reconciliation_cycles_total = Counter(
+    "genesis_reconciliation_cycles_total",
+    "Number of cross-seed reconciliation cycles executed.",
+)
+
+genesis_cosmic_latency_seconds = Histogram(
+    "genesis_cosmic_latency_seconds",
+    "Observed latency when merging long-delay consensus states.",
+    buckets=(1.0, 10.0, 60.0, 600.0, 3600.0, 86400.0, 604800.0),
+)
+
+genesis_information_entropy_ratio = Gauge(
+    "genesis_information_entropy_ratio",
+    "Ratio of retained information versus entropy loss across the cosmic network.",
+)
+
 __all__ = [
     "genesis_eval_duration_seconds",
     "genesis_module_score",
@@ -189,5 +226,12 @@ __all__ = [
     "genesis_theorist_updates_total",
     "genesis_publications_total",
     "genesis_knowledge_nodes_total",
+    "genesis_seeds_total",
+    "genesis_branches_total",
+    "genesis_vault_records_total",
+    "genesis_chronicle_events_total",
+    "genesis_reconciliation_cycles_total",
+    "genesis_cosmic_latency_seconds",
+    "genesis_information_entropy_ratio",
 ]
 
