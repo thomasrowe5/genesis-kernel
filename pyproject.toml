@@ -1,9 +1,9 @@
 [project]
 name = "genesis-kernel"
 version = "0.1.0"
-description = ""
+description = "Phase 1 kernel of the Genesis self-optimising AI infrastructure"
 authors = [
-    {name = "Thomas Rowe",email = "rowetho52@gmail.com"}
+    {name = "Thomas Rowe", email = "rowetho52@gmail.com"},
 ]
 readme = "README.md"
 requires-python = "^3.11"
@@ -24,7 +24,32 @@ dependencies = [
     "ruff (>=0.14.1,<0.15.0)"
 ]
 
+[project.scripts]
+genesis = "genesis.cli.client:main"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["genesis"]
+ignore_missing_imports = true
+warn_unused_configs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "ASYNC"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

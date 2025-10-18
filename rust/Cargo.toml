@@ -1,0 +1,11 @@
+[package]
+name = "genesis_kernel"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "genesis_kernel"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.21", features = ["extension-module"] }
