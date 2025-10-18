@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import gzip
-import json
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -12,6 +11,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from genesis.metrics import genesis_seeds_total
+from genesis.utils.json_utils import canonical_dumps_bytes
 
 
 @dataclass(slots=True)
@@ -50,7 +50,7 @@ class SeedBuilder:
             "knowledge": knowledge,
         }
         archive_path = self.workdir / f"seed-{seed_id}.json.gz"
-        payload = json.dumps(manifest, sort_keys=True).encode()
+        payload = canonical_dumps_bytes(manifest)
         await asyncio.to_thread(self._write_archive, archive_path, payload)
         hash_hex = blake2b(payload, digest_size=32).hexdigest()
         genesis_seeds_total.inc()

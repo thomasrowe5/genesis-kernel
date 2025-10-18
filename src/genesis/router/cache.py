@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, Tuple
 
 from genesis.metrics import genesis_cache_hits_total
+from genesis.utils.json_utils import canonical_dumps
 
 
 CACHEABLE_TASKS: Dict[str, int] = {
@@ -46,7 +46,7 @@ class InMemoryCache:
         module: str,
         version: str,
     ) -> str:
-        payload = json.dumps([task_type, args, kwargs], sort_keys=True, default=str)
+        payload = canonical_dumps([task_type, args, kwargs], default=str)
         digest = hashlib.sha1(payload.encode("utf-8")).hexdigest()
         return f"cache:{task_type}:{module}:{version}:{digest}"
 

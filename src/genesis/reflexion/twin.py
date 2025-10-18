@@ -10,6 +10,7 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping, Optional
 
 from genesis.metrics import genesis_reflexive_cycles_total, genesis_twin_sync_latency_seconds
 from genesis.registry.manager import ModuleRegistryManager
+from genesis.utils.json_utils import canonical_dumps
 from genesis.utils.pydantic_compat import BaseModel
 
 from .models import SQLMODEL_AVAILABLE, TwinSnapshot
@@ -101,9 +102,9 @@ class DigitalTwinBuilder:
 
         state = TwinState(
             at=datetime.utcnow(),
-            topology=json.loads(json.dumps(topology, default=str)),
+            topology=json.loads(canonical_dumps(topology, default=str)),
             metrics={k: float(v) for k, v in metrics.items()},
-            config=json.loads(json.dumps(active_config, default=str)),
+            config=json.loads(canonical_dumps(active_config, default=str)),
         )
         self._persist(state)
         duration = time.perf_counter() - start

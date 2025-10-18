@@ -1,13 +1,13 @@
 """Causality observer safeguarding the temporal recursion engine."""
 from __future__ import annotations
 
-from datetime import datetime
 import hashlib
-import json
+from datetime import datetime
 from typing import Callable, ContextManager, List, Optional
 
-from genesis.metrics import genesis_entropy_delta, genesis_temporal_violations_total
 from genesis.chronos import compute_entropy_delta
+from genesis.metrics import genesis_entropy_delta, genesis_temporal_violations_total
+from genesis.utils.json_utils import canonical_dumps
 
 from .models import SQLMODEL_AVAILABLE, StatePayload, TemporalAlert
 
@@ -43,7 +43,7 @@ class TemporalObserver:
         self._seen_hashes: set[str] = set()
 
     def _canonical_hash(self, payload: StatePayload) -> str:
-        serialized = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
+        serialized = canonical_dumps(payload, default=str)
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     def _numeric_view(self, payload: StatePayload) -> dict[str, float]:
