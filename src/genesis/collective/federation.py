@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Any, Callable, List
@@ -14,6 +13,7 @@ except Exception:  # pragma: no cover - fallback when SQLModel is unavailable
     select = None  # type: ignore[assignment]
 
 from genesis.metrics import genesis_federation_peers_total
+from genesis.utils.json_utils import canonical_dumps_bytes
 
 from .consensus import ConsensusEngine, ProposalDecision
 from .economy import EconomyLedger, LedgerSnapshot
@@ -128,7 +128,7 @@ class FederationMesh:
                 for tx in ledger.transactions
             ],
         }
-        message = json.dumps(payload, sort_keys=True).encode("utf-8")
+        message = canonical_dumps_bytes(payload)
         signature = self._federation_identity.sign(message)
         return {"payload": payload, "signature": signature, "signer": self._federation_identity.public_key}
 

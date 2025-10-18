@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import math
 import random
 from dataclasses import dataclass, field
@@ -10,6 +9,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from genesis.metrics import genesis_simulations_total
+from genesis.utils.json_utils import canonical_dumps_bytes
 from genesis.utils.pydantic_compat import BaseModel, Field
 
 from .models import SQLMODEL_AVAILABLE, SimulationRun
@@ -86,7 +86,7 @@ class TwinSimulator:
         seed: Optional[int] = None,
     ) -> SimulationResult:
         state = base_state or await self._builder.build_snapshot()
-        serialized_change = json.dumps(change.dict(), sort_keys=True).encode()
+        serialized_change = canonical_dumps_bytes(change.dict())
         derived_seed = seed if seed is not None else int(hashlib.sha256(serialized_change).hexdigest()[:8], 16)
         rng = random.Random(derived_seed)
         predicted_delta: Dict[str, float] = {}

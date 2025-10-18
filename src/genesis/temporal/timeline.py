@@ -1,13 +1,13 @@
 """Timeline management with monotonic vector clocks."""
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime
-import hashlib
-import json
 from typing import Callable, ContextManager, Iterable, List, Mapping, Optional
 
 from genesis.metrics import genesis_timeline_commits_total
+from genesis.utils.json_utils import canonical_dumps
 
 from .models import SQLMODEL_AVAILABLE, StatePayload, TimelineCommit, VectorClock
 
@@ -60,7 +60,7 @@ class TimelineManager:
 
     @staticmethod
     def _hash_state(state: StatePayload) -> str:
-        canonical = json.dumps(state, sort_keys=True, default=str, separators=(",", ":"))
+        canonical = canonical_dumps(state, default=str)
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def _attach_identity(self, commit: TimelineCommit) -> TimelineCommit:

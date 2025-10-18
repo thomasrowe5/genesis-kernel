@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -10,6 +9,7 @@ from enum import Enum
 from typing import Dict, Iterable, Mapping, MutableMapping, Optional
 
 from genesis.metrics import genesis_treaties_active_total
+from genesis.utils.json_utils import canonical_dumps
 
 
 class TreatyPhase(str, Enum):
@@ -21,7 +21,7 @@ class TreatyPhase(str, Enum):
 
 
 def _canonical_payload(payload: Mapping[str, object]) -> str:
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return canonical_dumps(payload)
 
 
 @dataclass(slots=True)

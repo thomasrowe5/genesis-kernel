@@ -2,16 +2,16 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Iterable, List, Mapping, MutableMapping, Tuple
 
 from genesis.metrics import genesis_exchanges_total
+from genesis.utils.json_utils import canonical_dumps
 
 
 def _hash_payload(payload: Mapping[str, object]) -> str:
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    canonical = canonical_dumps(payload)
     return hashlib.blake2b(canonical.encode("utf-8"), digest_size=32).hexdigest()
 
 

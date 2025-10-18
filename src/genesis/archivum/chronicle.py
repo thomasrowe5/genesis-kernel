@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from genesis.cosmic.models import ChronicleEvent
+from genesis.utils.json_utils import canonical_dumps
 
 
 @dataclass(slots=True)
@@ -29,7 +30,7 @@ class ChronicleLedger:
 
     def append(self, branch_id: Optional[str], event_type: str, data: Dict[str, Any]) -> ChronicleRecord:
         at = datetime.now(timezone.utc)
-        payload = json.dumps(data, sort_keys=True)
+        payload = canonical_dumps(data)
         event = ChronicleEvent(id=f"evt-{len(self._history)+1}", branch_id=branch_id, type=event_type, at=at, data_json=payload)
         hash_hex = self._hash(event, self._history[-1].hash_hex if self._history else "0" * 64)
         record = ChronicleRecord(event=event, hash_hex=hash_hex)
@@ -41,7 +42,7 @@ class ChronicleLedger:
         return list(self._history)
 
     def _persist(self, record: ChronicleRecord) -> None:
-        line = json.dumps(
+        line = canonical_dumps(
             {
                 "id": record.event.id,
                 "branch_id": record.event.branch_id,
