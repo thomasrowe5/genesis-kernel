@@ -3,6 +3,39 @@ from __future__ import annotations
 
 from prometheus_client import Counter, Gauge, Histogram
 
+# Reflexive intelligence metrics.
+genesis_reflexive_cycles_total = Counter(
+    "genesis_reflexive_cycles_total",
+    "Total number of reflexive intelligence cycles executed.",
+)
+
+genesis_simulations_total = Counter(
+    "genesis_simulations_total",
+    "Simulation executions within the reflexive intelligence layer.",
+    labelnames=("status",),
+)
+
+genesis_reflection_confidence_mean = Gauge(
+    "genesis_reflection_confidence_mean",
+    "Rolling mean confidence recorded in reflection logs.",
+)
+
+genesis_uncertainty_metrics_total = Gauge(
+    "genesis_uncertainty_metrics_total",
+    "Number of metrics tracked by the uncertainty engine.",
+)
+
+genesis_twin_sync_latency_seconds = Histogram(
+    "genesis_twin_sync_latency_seconds",
+    "Latency required to construct or refresh the digital twin.",
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0),
+)
+
+genesis_meta_anomalies_total = Counter(
+    "genesis_meta_anomalies_total",
+    "Anomalies detected by reflexive introspection.",
+)
+
 # Histogram tracking the duration of each evaluator execution.
 genesis_eval_duration_seconds = Histogram(
     "genesis_eval_duration_seconds",
@@ -229,5 +262,11 @@ __all__ = [
     "genesis_ethics_violations_total",
     "genesis_replica_boots_total",
     "genesis_self_repair_events_total",
+    "genesis_reflexive_cycles_total",
+    "genesis_simulations_total",
+    "genesis_reflection_confidence_mean",
+    "genesis_uncertainty_metrics_total",
+    "genesis_twin_sync_latency_seconds",
+    "genesis_meta_anomalies_total",
 ]
 
