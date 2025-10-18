@@ -163,6 +163,40 @@ genesis_knowledge_nodes_total = Gauge(
     "Number of nodes tracked in the knowledge graph.",
 )
 
+# Civilization layer instrumentation.
+genesis_federation_peers_total = Gauge(
+    "genesis_federation_peers_total",
+    "Total number of peers registered in the federation mesh.",
+)
+
+genesis_consensus_rounds_total = Counter(
+    "genesis_consensus_rounds_total",
+    "Number of consensus rounds executed by the federation.",
+    labelnames=("state",),
+)
+
+genesis_economy_tx_total = Counter(
+    "genesis_economy_tx_total",
+    "Economy ledger transactions grouped by reason.",
+    labelnames=("reason",),
+)
+
+genesis_ethics_violations_total = Counter(
+    "genesis_ethics_violations_total",
+    "Ethics violations detected by the civilization auditor.",
+    labelnames=("principle",),
+)
+
+genesis_replica_boots_total = Counter(
+    "genesis_replica_boots_total",
+    "Replica bootstrap operations executed across the federation.",
+)
+
+genesis_self_repair_events_total = Counter(
+    "genesis_self_repair_events_total",
+    "Self repair events triggered by lifecycle management.",
+)
+
 __all__ = [
     "genesis_eval_duration_seconds",
     "genesis_module_score",
@@ -189,5 +223,11 @@ __all__ = [
     "genesis_theorist_updates_total",
     "genesis_publications_total",
     "genesis_knowledge_nodes_total",
+    "genesis_federation_peers_total",
+    "genesis_consensus_rounds_total",
+    "genesis_economy_tx_total",
+    "genesis_ethics_violations_total",
+    "genesis_replica_boots_total",
+    "genesis_self_repair_events_total",
 ]
 
