@@ -1,6 +1,9 @@
 """Prometheus metric definitions for the Genesis kernel."""
 from __future__ import annotations
 
+import time
+from typing import Any, Dict, Iterable
+
 from prometheus_client import Counter, Gauge, Histogram
 
 # Temporal recursion metrics.
@@ -157,6 +160,66 @@ genesis_chronicle_events_total = Counter(
     "genesis_chronicle_events_total",
     "Chronicle events recorded across archival ledgers.",
 )
+
+# Unified v12 observability metrics.
+genesis_api_latency_seconds = Histogram(
+    "genesis_api_latency_seconds",
+    "API latency measured per route and method.",
+    labelnames=("route", "method", "status"),
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
+)
+
+genesis_worker_task_duration_seconds = Histogram(
+    "genesis_worker_task_duration_seconds",
+    "Duration spent executing worker tasks by module.",
+    labelnames=("task_type", "module", "version", "status"),
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
+)
+
+genesis_retry_total = Counter(
+    "genesis_retry_total",
+    "Retries attempted by subsystem and reason.",
+    labelnames=("operation", "reason"),
+)
+
+genesis_uptime_seconds = Gauge(
+    "genesis_uptime_seconds",
+    "Uptime of the current Genesis process in seconds.",
+)
+
+_PROCESS_START_TIME = time.perf_counter()
+
+
+def update_uptime_metric() -> float:
+    """Update the uptime gauge and return the elapsed seconds."""
+
+    elapsed = time.perf_counter() - _PROCESS_START_TIME
+    genesis_uptime_seconds.set(elapsed)
+    return elapsed
+
+
+def collect_metric_samples(prefix: str) -> Dict[str, Iterable[Dict[str, Any]]]:
+    """Utility to snapshot Prometheus metric samples for diagnostics."""
+
+    try:
+        from prometheus_client import REGISTRY
+    except Exception:  # pragma: no cover - prometheus optional
+        return {}
+
+    snapshot: Dict[str, Iterable[Dict[str, Any]]] = {}
+    for metric in REGISTRY.collect():  # pragma: no cover - iteration tested via CLI
+        if not metric.name.startswith(prefix):
+            continue
+        samples: list[Dict[str, Any]] = []
+        for sample in metric.samples:
+            samples.append({
+                "name": sample.name,
+                "labels": dict(sample.labels),
+                "value": sample.value,
+            })
+        snapshot[metric.name] = samples
+    return snapshot
+
 
 genesis_information_entropy_ratio = Gauge(
     "genesis_information_entropy_ratio",
@@ -339,6 +402,12 @@ genesis_treaties_active_total = Gauge(
 )
 
 __all__ = [
+    "collect_metric_samples",
+    "update_uptime_metric",
+    "genesis_api_latency_seconds",
+    "genesis_worker_task_duration_seconds",
+    "genesis_retry_total",
+    "genesis_uptime_seconds",
     "genesis_timeline_commits_total",
     "genesis_recursion_runs_total",
     "genesis_branch_merges_total",

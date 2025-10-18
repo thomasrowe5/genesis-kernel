@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -34,6 +35,17 @@ def test_docs_build_generates_html(tmp_path, monkeypatch) -> None:
     assert result.exit_code == 0
     index = tmp_path / "index.html"
     assert index.exists()
+
+
+def test_diag_outputs_metrics(tmp_path) -> None:
+    runner = CliRunner()
+    output_path = tmp_path / "diag.json"
+    result = runner.invoke(app, ["diag", "--output", str(output_path)])
+    assert result.exit_code == 0
+    data = json.loads(output_path.read_text(encoding="utf-8"))
+    assert "uptime_seconds" in data
+    assert "metrics" in data
+    assert any(name.startswith("genesis_") for name in data["metrics"].keys())
 
 
 def test_release_create_dry_run(tmp_path, monkeypatch) -> None:
