@@ -23,8 +23,86 @@ genesis_replacements_total = Counter(
     "Number of times the optimizer promoted a new module implementation.",
 )
 
+# Router selection counter capturing policy decisions.
+genesis_router_selection_total = Counter(
+    "genesis_router_selection_total",
+    "Router selections per policy and module variant.",
+    labelnames=("policy", "module", "version"),
+)
+
+# Canary rollout counters.
+genesis_canary_promotions_total = Counter(
+    "genesis_canary_promotions_total",
+    "Successful canary promotions per module version.",
+    labelnames=("module", "version"),
+)
+
+genesis_canary_rollbacks_total = Counter(
+    "genesis_canary_rollbacks_total",
+    "Number of canary rollbacks triggered by SLO breaches.",
+    labelnames=("module", "version", "reason"),
+)
+
+# Traffic share gauge for observability dashboards.
+genesis_traffic_share = Gauge(
+    "genesis_traffic_share",
+    "Current traffic share per module version.",
+    labelnames=("module", "version"),
+)
+
+# RL reward telemetry.
+genesis_rl_reward = Gauge(
+    "genesis_rl_reward",
+    "Latest reward emitted by the online optimizer.",
+    labelnames=("module", "version"),
+)
+
+genesis_rl_update_total = Counter(
+    "genesis_rl_update_total",
+    "Number of optimizer updates processed.",
+)
+
+# Cache and rate-limit instrumentation.
+genesis_cache_hits_total = Counter(
+    "genesis_cache_hits_total",
+    "Cache hits recorded per task type.",
+    labelnames=("task_type",),
+)
+
+genesis_rate_limit_drops_total = Counter(
+    "genesis_rate_limit_drops_total",
+    "Requests dropped because of rate limiting per task type.",
+    labelnames=("task_type",),
+)
+
+# Orchestration decision latency histogram.
+genesis_orch_decision_duration_seconds = Histogram(
+    "genesis_orch_decision_duration_seconds",
+    "Time spent computing orchestration decisions (routing, canary, optimizer).",
+    buckets=(
+        0.001,
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1.0,
+    ),
+)
+
 __all__ = [
     "genesis_eval_duration_seconds",
     "genesis_module_score",
     "genesis_replacements_total",
+    "genesis_router_selection_total",
+    "genesis_canary_promotions_total",
+    "genesis_canary_rollbacks_total",
+    "genesis_traffic_share",
+    "genesis_rl_reward",
+    "genesis_rl_update_total",
+    "genesis_cache_hits_total",
+    "genesis_rate_limit_drops_total",
+    "genesis_orch_decision_duration_seconds",
 ]
