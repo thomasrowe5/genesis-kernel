@@ -1,33 +1,32 @@
 # Genesis Kernel
 
-Genesis is a modular experimentation kernel that now supports a closed self-optimization loop.
+![Status: v1.0.1 – Perfection Build](https://img.shields.io/badge/Status-v1.0.1%E2%80%93Perfection%20Build-4c1.svg)
 
-## Phase 2 – Evaluation Loop and Self-Optimization
+Genesis is a unified, self-optimising AI infrastructure kernel that orchestrates cognition, evaluation, optimisation, and governance under a single control plane. Phase 13 completes the "Perfection Build" by consolidating every subsystem behind a consistent FastAPI gateway, observability fabric, and policy-aware worker fleet. The platform continuously learns from live traffic, curates canonical experiment trails, and feeds discoveries back into its optimisation loops.
 
-Phase 2 introduces an evaluator service, reinforcement-learning powered optimizer, and a persistent module registry. Together these services:
+The kernel pairs deterministic orchestration with reflexive autonomy. Governance, provenance, and temporal safety nets ensure that every optimisation, benchmark, and deployment remains auditable, reproducible, and reversible. Phase 13 delivers the final polish: harmonised APIs, deterministic rollouts, and near-instant chaos recovery while preserving the experimental agility that defined earlier phases.
 
-- Discover candidate modules under `src/genesis/modules/`.
-- Execute declarative benchmarks stored in `benchmarks/*.yaml` using the AutoTest Cloud client.
-- Compute rewards from accuracy, latency, and stability metrics.
-- Promote higher scoring variants and route traffic via PromptMesh.
-- Expose observability primitives through Prometheus metrics and a FastAPI leaderboard endpoint.
-
-### Key Commands
+## Quickstart
 
 ```bash
-poetry run genesis eval --module fibonacci
-poetry run genesis leaderboard
-poetry run genesis promote --module fibonacci --version v2
+# Install dependencies and lock the toolchain
+make install
+
+# Launch the local demo stack (API gateway, worker, Redis, Postgres, Prometheus)
+make demo
+
+# Enqueue a sample optimisation benchmark and stream live diagnostics
+poetry run genesis benchmark run
+poetry run genesis diag
 ```
 
-### API
+Once the stack is running, visit `http://localhost:8000/docs` for the live API explorer and `http://localhost:9000/metrics` for Prometheus telemetry.
 
-Mount `genesis.api.routes.modules.router` inside the FastAPI application to surface `/modules/leaderboard`.
+## Documentation
 
-### Telemetry
+- [Full Documentation Portal](https://example.com/genesis) – architecture, operations, and governance guides
+- [Performance Benchmarks](docs/performance_benchmarks.md) – Phase 13 throughput and latency analysis
+- [Operations Manual](docs/operations_manual.md) – deployment, monitoring, and troubleshooting recipes
+- [Research Whitepaper](docs/research_whitepaper.md) – engineering principles and validation study
 
-The evaluator emits Prometheus histograms (`genesis_eval_duration_seconds`), gauges (`genesis_module_score{module,version}`), and replacement counters (`genesis_replacements_total`). Wire these into Grafana to visualise the top-performing modules.
-
-### Further Reading
-
-See [`docs/self_optimization.md`](docs/self_optimization.md) for reward function details and future roadmap items.
+For change history and release highlights see [CHANGELOG.md](CHANGELOG.md).

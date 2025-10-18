@@ -1,30 +1,40 @@
-# Genesis Architecture Overview
+# Genesis Architecture Overview (v1.0.1)
 
-This document summarises the consolidated Phase 1–12 architecture and explains how the
-monorepo is structured. Each subsystem is packaged under the `src/genesis/` namespace with
-clear hand-offs enforced through the unified API gateway.
+As of the Perfection Build every subsystem operates behind the unified FastAPI gateway, worker pool, and observability stack. The diagram below highlights how requests enter the kernel, traverse cognition, evaluation, optimisation, and governance loops, and feed metrics back into the command surface.
 
 ```
-+---------------------+        +---------------------+        +---------------------+
-|  Genesis CLI / API  |<-----> |  Orchestration Bus   |<-----> |   Worker Executors   |
-+---------------------+        +---------------------+        +---------------------+
-         ^                               ^                               ^
-         |                               |                               |
-         |                               |                               |
-         v                               v                               v
-  Governance & Safety          Evaluator → Optimizer             Cognition & Reflexion
-         ^                               |                               |
-         |                               v                               v
-         +------------------> Temporal / Retrocausal <-------------------+
+                             +-------------------------------+
+                             |        Client Interfaces      |
+                             |  (CLI, SDK, Automation Bus)   |
+                             +---------------+---------------+
+                                             |
+                                             v
++-------------------+    +-------------------+    +-------------------+    +-------------------+
+|  Unified FastAPI  |--> |  Cognition &      |--> | Evaluator &       |--> | Optimiser &       |
+|  Gateway & RBAC   |    |  Experimentation  |    | Temporal Services |    | Orchestration Hub |
++---------+---------+    +---------+---------+    +---------+---------+    +---------+---------+
+          |                       |                        |                        |
+          |                       v                        v                        v
+          |            +-------------------+    +-------------------+    +-------------------+
+          |            | Reflexion &       |    | Governance &      |    | Cosmic / Cluster  |
+          |            | Digital Twin Loop |    | Provenance Layer  |    | Federation Mesh   |
+          |            +---------+---------+    +---------+---------+    +---------+---------+
+          |                      \                 /         |                    /
+          |                       \               /          |                   /
+          v                        v             v           v                  v
++---------+---------+    +-------------------+    +-------------------+    +-------------------+
+| Unified Metrics & |<---| Worker Executors  |<---| Retrocausal Store |<---| Persistence Tier  |
+| Telemetry Fabric  |    | (Async Tasks, RL) |    | & Branch Manager  |    | (DB, Object, KV)  |
++-------------------+    +-------------------+    +-------------------+    +-------------------+
 ```
 
-* **Core** contains shared configuration, logging, observability, and persistence helpers.
-* **Evaluator**, **Optimizer**, and **Router** modules orchestrate candidate testing and deployment.
-* **Cognition** and **Reflexion** encapsulate autonomous reasoning loops and self-modeling.
-* **Temporal** and **Retrocausal** maintain counterfactual histories and branching timelines.
-* **Governance** codifies the Prime Ethic, RBAC, auditing, and release sign-off.
-* **Infra** packages docker-compose, Kubernetes manifests, and observability dashboards.
+## End-to-End Flow
 
-Together these pieces deliver a reproducible platform that can be deployed locally or to
-cloud environments. The unified API (`src/genesis/api/main.py`) exposes scoped routes with
-versioned documentation and built-in RBAC enforcement.
+1. Operators and automated agents interact through the CLI or API gateway, authenticated via RBAC policies.
+2. Cognition services expand goals into experiment plans and feed hypotheses to the evaluator.
+3. Evaluator workers execute deterministic benchmarks, snapshot temporal branches, and stream metrics to the unified observability plane.
+4. Optimiser and orchestration services promote high-performing modules, route traffic, and coordinate deployment rollouts.
+5. Reflexion, governance, and provenance subsystems continuously audit outcomes, replay timelines, and enforce compliance before finalisation.
+6. Metrics, traces, and artefacts persist into the shared telemetry store, enabling dashboards, alerting, and reproducible replay.
+
+**Note:** As of v1.0.1 all subsystems run under a unified API, worker scheduler, and metrics stack, eliminating phase-specific integration glue.
