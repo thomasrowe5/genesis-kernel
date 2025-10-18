@@ -163,41 +163,38 @@ genesis_knowledge_nodes_total = Gauge(
     "Number of nodes tracked in the knowledge graph.",
 )
 
-# Cosmic expansion metrics.
-genesis_seeds_total = Counter(
-    "genesis_seeds_total",
-    "Number of interstellar seeds packaged for deployment.",
+# Civilization layer instrumentation.
+genesis_federation_peers_total = Gauge(
+    "genesis_federation_peers_total",
+    "Total number of peers registered in the federation mesh.",
 )
 
-genesis_branches_total = Counter(
-    "genesis_branches_total",
-    "Total number of civilization branches created via speciation.",
+genesis_consensus_rounds_total = Counter(
+    "genesis_consensus_rounds_total",
+    "Number of consensus rounds executed by the federation.",
+    labelnames=("state",),
 )
 
-genesis_vault_records_total = Counter(
-    "genesis_vault_records_total",
-    "Count of archival vault records created for long-term storage.",
+genesis_economy_tx_total = Counter(
+    "genesis_economy_tx_total",
+    "Economy ledger transactions grouped by reason.",
+    labelnames=("reason",),
 )
 
-genesis_chronicle_events_total = Counter(
-    "genesis_chronicle_events_total",
-    "Events appended to the interstellar chronicle ledger.",
+genesis_ethics_violations_total = Counter(
+    "genesis_ethics_violations_total",
+    "Ethics violations detected by the civilization auditor.",
+    labelnames=("principle",),
 )
 
-genesis_reconciliation_cycles_total = Counter(
-    "genesis_reconciliation_cycles_total",
-    "Number of cross-seed reconciliation cycles executed.",
+genesis_replica_boots_total = Counter(
+    "genesis_replica_boots_total",
+    "Replica bootstrap operations executed across the federation.",
 )
 
-genesis_cosmic_latency_seconds = Histogram(
-    "genesis_cosmic_latency_seconds",
-    "Observed latency when merging long-delay consensus states.",
-    buckets=(1.0, 10.0, 60.0, 600.0, 3600.0, 86400.0, 604800.0),
-)
-
-genesis_information_entropy_ratio = Gauge(
-    "genesis_information_entropy_ratio",
-    "Ratio of retained information versus entropy loss across the cosmic network.",
+genesis_self_repair_events_total = Counter(
+    "genesis_self_repair_events_total",
+    "Self repair events triggered by lifecycle management.",
 )
 
 __all__ = [
@@ -226,12 +223,11 @@ __all__ = [
     "genesis_theorist_updates_total",
     "genesis_publications_total",
     "genesis_knowledge_nodes_total",
-    "genesis_seeds_total",
-    "genesis_branches_total",
-    "genesis_vault_records_total",
-    "genesis_chronicle_events_total",
-    "genesis_reconciliation_cycles_total",
-    "genesis_cosmic_latency_seconds",
-    "genesis_information_entropy_ratio",
+    "genesis_federation_peers_total",
+    "genesis_consensus_rounds_total",
+    "genesis_economy_tx_total",
+    "genesis_ethics_violations_total",
+    "genesis_replica_boots_total",
+    "genesis_self_repair_events_total",
 ]
 

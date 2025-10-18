@@ -5,12 +5,15 @@ import asyncio
 import json
 import os
 import random
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import typer
+
+from functools import partial
 
 from genesis.cognition import (
     ExperimentPlanner,
@@ -19,7 +22,9 @@ from genesis.cognition import (
     Theorist,
 )
 from genesis.cognition.state import CognitionState
-from genesis.db import get_engine
+from genesis.db import get_engine, session_scope
+from genesis.collective import FederationMesh
+from genesis.replication import BootstrapPackager, ReplicaMigrator
 from genesis.evaluator.autotest_client import AutoTestClient
 from genesis.evaluator.service import EvaluatorService
 from genesis.knowledge import (
@@ -45,18 +50,38 @@ from genesis.research import (
     ExperimentRunner,
     Insight,
 )
+from genesis.metanet.interconnect import FederationProfile
+from genesis.metanet.runtime import get_runtime
 
 app = typer.Typer(help="Genesis self-optimization utilities")
 cluster_app = typer.Typer(help="Cluster management commands")
+treaty_app = typer.Typer(help="Inter-federation treaty coordination")
+exchange_app = typer.Typer(help="Inter-federation exchange controls")
+metrics_app = typer.Typer(help="Observability metrics")
 app.add_typer(cluster_app, name="cluster")
-seed_app = typer.Typer(help="Seed deployment commands")
-cosmic_app = typer.Typer(help="Cosmic synchronization commands")
-vault_app = typer.Typer(help="Archival vault operations")
-chronicle_app = typer.Typer(help="Chronicle inspection tools")
-app.add_typer(seed_app, name="seed")
-app.add_typer(cosmic_app, name="cosmic")
-app.add_typer(vault_app, name="vault")
-app.add_typer(chronicle_app, name="chronicle")
+peer_app = typer.Typer(help="Federation peer management")
+proposal_app = typer.Typer(help="Federation governance")
+ledger_app = typer.Typer(help="Economy ledger utilities")
+app.add_typer(peer_app, name="peer")
+app.add_typer(proposal_app, name="proposal")
+app.add_typer(ledger_app, name="ledger")
+
+
+def _ensure_collective_tables(database_url: Optional[str]) -> None:
+    try:  # pragma: no cover - optional dependency path
+        from sqlmodel import SQLModel
+        from genesis.collective.models import EconomyTx, EthicsEvent, PeerNode, Proposal, Replica
+    except Exception:  # pragma: no cover - SQLModel unavailable
+        return
+
+    engine = get_engine(database_url)
+    SQLModel.metadata.create_all(engine)
+
+
+def _build_federation_mesh(database_url: Optional[str]) -> FederationMesh:
+    _ensure_collective_tables(database_url)
+    session_factory = partial(session_scope, database_url)
+    return FederationMesh(session_factory)
 
 
 def _module_path(module: str) -> str:
@@ -180,6 +205,109 @@ def eval(
             session.close()
 
 
+@peer_app.command("add")
+def peer_add(
+    url: str = typer.Option(..., "--url", help="Peer discovery URL"),
+    pubkey: Optional[str] = typer.Option(None, help="Peer public key override"),
+    stake: float = typer.Option(0.0, help="Stake allocated to the peer"),
+    database_url: Optional[str] = typer.Option(None, help="Database URL override"),
+) -> None:
+    """Register a peer node with the federation."""
+
+    mesh = _build_federation_mesh(database_url)
+    if pubkey is None:
+        pubkey = mesh.identity.create(url).public_key
+    peer = asyncio.run(mesh.register_peer(host=url, pubkey=pubkey, stake=stake))
+    typer.echo(f"peer_id={peer.id} host={peer.host} stake={peer.stake:.2f}")
+
+
+@proposal_app.command("create")
+def proposal_create(
+    proposal_type: str = typer.Option(..., "--type", help="Proposal classification"),
+    payload: str = typer.Option(..., "--payload", help="JSON encoded payload"),
+    proposer: str = typer.Option("cli", help="Proposer identifier"),
+    database_url: Optional[str] = typer.Option(None, help="Database URL override"),
+) -> None:
+    """Submit a governance proposal to the federation."""
+
+    mesh = _build_federation_mesh(database_url)
+    try:
+        payload_data = json.loads(payload)
+    except json.JSONDecodeError as exc:  # pragma: no cover - input validation
+        raise typer.BadParameter("Payload must be valid JSON") from exc
+    proposal_id = asyncio.run(
+        mesh.submit_proposal(proposal_type=proposal_type, payload=payload_data, proposer=proposer)
+    )
+    typer.echo(f"proposal_id={proposal_id}")
+
+
+@proposal_app.command("vote")
+def proposal_vote(
+    proposal_id: int = typer.Option(..., "--id", help="Proposal identifier"),
+    decision: str = typer.Option(..., "--decision", help="approve or reject"),
+    voter: str = typer.Option("cli", help="Voter identifier"),
+    database_url: Optional[str] = typer.Option(None, help="Database URL override"),
+) -> None:
+    """Cast a vote on a proposal."""
+
+    if decision not in {"approve", "reject"}:
+        raise typer.BadParameter("Decision must be approve or reject")
+    mesh = _build_federation_mesh(database_url)
+    result = asyncio.run(mesh.vote(proposal_id, approve=decision == "approve", voter=voter))
+    typer.echo(f"decision={result.value}")
+
+
+@ledger_app.command("show")
+def ledger_show(
+    database_url: Optional[str] = typer.Option(None, help="Database URL override"),
+    limit: int = typer.Option(50, help="Number of transactions to display"),
+) -> None:
+    """Print a snapshot of the economy ledger."""
+
+    mesh = _build_federation_mesh(database_url)
+    snapshot = asyncio.run(mesh.ledger_snapshot())
+    typer.echo("Balances:")
+    for peer_id, balance in snapshot.balances.items():
+        typer.echo(f"  peer={peer_id} balance={balance:.2f}")
+    typer.echo("Transactions:")
+    for tx in snapshot.transactions[:limit]:
+        typer.echo(
+            "  "
+            + " ".join(
+                [
+                    f"from={tx.from_id}",
+                    f"to={tx.to_id}",
+                    f"amount={tx.amount:.2f}",
+                    f"reason={tx.reason}",
+                    f"at={tx.at.isoformat()}",
+                ]
+            )
+        )
+
+
+@app.command()
+def replicate(
+    target: str = typer.Option(..., "--target", help="Target region"),
+    database_url: Optional[str] = typer.Option(None, help="Database URL override"),
+) -> None:
+    """Bootstrap a replica and register it with the federation."""
+
+    _ensure_collective_tables(database_url)
+    packager = BootstrapPackager()
+    migrator = ReplicaMigrator(partial(session_scope, database_url))
+    with tempfile.TemporaryDirectory() as tmpdir:
+        artifact = asyncio.run(packager.package(Path(tmpdir)))
+        origin_node = os.getenv("GENESIS_NODE_ID", "genesis-root")
+        deployment = asyncio.run(
+            migrator.deploy(artifact=artifact, origin_node=origin_node, target=target)
+        )
+    typer.echo(
+        "replica_id="
+        + str(deployment.record.id)
+        + f" target={deployment.target} approved={deployment.approved}"
+    )
+
+
 @dataclass(slots=True)
 class CognitionEnvironment:
     state: CognitionState
@@ -277,6 +405,79 @@ def _parse_metric_pairs(pairs: list[str]) -> dict[str, float]:
         except ValueError as exc:  # pragma: no cover - defensive
             raise typer.BadParameter(f"Invalid numeric value in '{pair}'") from exc
     return metrics
+
+
+@treaty_app.command("propose")
+def treaty_propose(
+    partner: str = typer.Option(..., "--partner", help="Partner federation identifier."),
+    payload: str = typer.Option(..., "--payload", help="Treaty payload JSON."),
+) -> None:
+    """Propose and ratify a treaty with a partner federation."""
+
+    _ensure_local_federation()
+    _ensure_federation(partner)
+    runtime = _metanet_runtime()
+    parties = [_LOCAL_FEDERATION_ID, partner]
+    data = json.loads(payload)
+    public_keys = {party: runtime.public_key(party) for party in parties}
+    treaty = asyncio.run(
+        runtime.diplomat.negotiate_treaty(parties=parties, payload=data, public_keys=public_keys)
+    )
+    runtime.intelligence.update_peace_index(runtime.treaties.active_treaty_count(), disputes=0)
+    typer.echo(f"treaty_id={treaty.treaty_id} state={treaty.state.value}")
+
+
+@treaty_app.command("vote")
+def treaty_vote(
+    treaty_id: str = typer.Option(..., "--id", help="Treaty identifier."),
+    decision: str = typer.Option(..., "--decision", help="approve or reject"),
+) -> None:
+    """Cast a vote on a treaty for the local federation."""
+
+    _ensure_local_federation()
+    runtime = _metanet_runtime()
+    key = runtime.public_key(_LOCAL_FEDERATION_ID)
+    runtime.treaties.sign(treaty_id, _LOCAL_FEDERATION_ID, key)
+    approve = decision.lower() == "approve"
+    runtime.treaties.vote(treaty_id, _LOCAL_FEDERATION_ID, approve, key)
+    typer.echo(f"treaty_id={treaty_id} decision={'approved' if approve else 'rejected'}")
+
+
+@exchange_app.command("trade")
+def exchange_trade(
+    partner: str = typer.Option(..., "--partner", help="Partner federation identifier."),
+    credits: float = typer.Option(..., "--credits", help="Credit amount to transfer."),
+) -> None:
+    """Execute an inter-federation exchange transaction."""
+
+    _ensure_local_federation()
+    _ensure_federation(partner)
+    runtime = _metanet_runtime()
+    receipt = runtime.ledger.execute_atomic_swap(
+        from_federation=_LOCAL_FEDERATION_ID,
+        to_federation=partner,
+        amount=credits,
+    )
+    typer.echo(f"tx_id={receipt.tx_id} proof={receipt.proof_hash}")
+
+
+@app.command()
+def adapt(goal: str = typer.Option(..., "--goal", help="Global adaptation objective.")) -> None:
+    """Optimise the global task allocation for the supplied goal."""
+
+    _ensure_local_federation()
+    runtime = _metanet_runtime()
+    plan = asyncio.run(runtime.diplomat.adapt_global_state(goal))
+    typer.echo(json.dumps(plan))
+
+
+@metrics_app.command("global")
+def metrics_global() -> None:
+    """Display aggregated global metrics."""
+
+    runtime = _metanet_runtime()
+    snapshot = runtime.intelligence.snapshot()
+    typer.echo(json.dumps(snapshot))
 
 
 @app.command()
