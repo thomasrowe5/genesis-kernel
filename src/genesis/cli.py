@@ -66,6 +66,23 @@ from genesis.temporal import (
 )
 from genesis.chronos import ContinuityEnforcer
 from genesis.reflexion.models import SQLMODEL_AVAILABLE
+from genesis.multiverse import (
+    BranchState,
+    MultiverseCoherenceEngine,
+    MultiverseManifold,
+    MultiverseMergeReport,
+    MultiverseObserver,
+)
+from genesis.retrocausal import (
+    RetroConsistencyVerifier,
+    RetrocausalBridge,
+    RetrocausalBridgeReport,
+    RetrocausalInferenceEngine,
+    ReverseSimulationRequest,
+    ReverseSimulator,
+    TimelineCommit,
+    TimelineRepository,
+)
 
 app = typer.Typer(help="Genesis self-optimization utilities")
 cluster_app = typer.Typer(help="Cluster management commands")
@@ -81,6 +98,10 @@ app.add_typer(proposal_app, name="proposal")
 app.add_typer(ledger_app, name="ledger")
 twin_app = typer.Typer(help="Digital twin operations")
 app.add_typer(twin_app, name="twin")
+retro_app = typer.Typer(help="Retrocausal timeline controls")
+multiverse_app = typer.Typer(help="Multiverse synchronisation controls")
+app.add_typer(retro_app, name="retro")
+app.add_typer(multiverse_app, name="multiverse")
 
 
 def _ensure_collective_tables(database_url: Optional[str]) -> None:
@@ -833,6 +854,95 @@ def sign(
     destination = output or Path(f"{module}-{version}.signature.json")
     destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     typer.echo(f"signature={record.hash_hex} path={destination}")
+
+
+@retro_app.command("run")
+def retro_run(
+    from_commit: str = typer.Option(..., "--from", help="Starting commit identifier"),
+    to_commit: str = typer.Option(..., "--to", help="Target commit identifier"),
+) -> None:
+    context = _retro_context()
+    bridge = context["bridge"]
+    if not isinstance(bridge, RetrocausalBridge):  # pragma: no cover - defensive
+        raise RuntimeError("Retrocausal bridge unavailable")
+
+    async def _execute() -> RetrocausalBridgeReport:
+        request = ReverseSimulationRequest(from_commit=from_commit, to_commit=to_commit)
+        return await bridge.execute(request)
+
+    report = asyncio.run(_execute())
+    typer.echo(
+        json.dumps(
+            {
+                "path": list(report.simulation.path),
+                "reward_delta": report.simulation.reward_delta,
+                "entropy_delta": report.simulation.entropy_delta,
+                "gradients": dict(report.update.gradients),
+                "proof": {"hash": report.proof.run_hash, "valid": report.proof.valid},
+            },
+            indent=2,
+        )
+    )
+
+
+@retro_app.command("verify")
+def retro_verify() -> None:
+    context = _retro_context()
+    verifier = context["verifier"]
+    assert isinstance(verifier, RetroConsistencyVerifier)
+    latest = verifier.chain()
+    if latest is None:
+        typer.echo(json.dumps({"consistency": False, "reason": "no runs"}, indent=2))
+        raise typer.Exit(code=1)
+    typer.echo(json.dumps({"consistency": True, "latest_hash": latest}, indent=2))
+
+
+@multiverse_app.command("merge")
+def multiverse_merge(
+    epsilon: float | None = typer.Option(None, "--epsilon", min=0.0, help="Override merge entropy epsilon"),
+) -> None:
+    context = _retro_context()
+    engine = context["engine"]
+    assert isinstance(engine, MultiverseCoherenceEngine)
+    if epsilon is not None:
+        engine.set_epsilon(epsilon)
+
+    async def _merge() -> MultiverseMergeReport:
+        return await engine.merge()
+
+    report = asyncio.run(_merge())
+    typer.echo(
+        json.dumps(
+            {
+                "coherence_score": report.coherence_score,
+                "merged_branch": {
+                    "branch_id": report.merged_branch.branch_id,
+                    "metrics": dict(report.merged_branch.metrics),
+                },
+            },
+            indent=2,
+        )
+    )
+
+
+@multiverse_app.command("metrics")
+def multiverse_metrics() -> None:
+    context = _retro_context()
+    engine = context["engine"]
+    observer = context["observer"]
+    assert isinstance(engine, MultiverseCoherenceEngine)
+    assert isinstance(observer, MultiverseObserver)
+    coherence = engine.coherence_score()
+    alerts = [
+        {"branch_a": alert.branch_a, "branch_b": alert.branch_b, "delta": alert.delta}
+        for alert in observer.scan()
+    ]
+    payload = {
+        "coherence": coherence,
+        "branches": engine.summary(),
+        "alerts": alerts,
+    }
+    typer.echo(json.dumps(payload, indent=2))
 
 
 @app.command()

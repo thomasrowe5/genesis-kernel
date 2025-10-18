@@ -269,6 +269,63 @@ genesis_knowledge_nodes_total = Gauge(
     "Number of nodes tracked in the knowledge graph.",
 )
 
+# Global adaptation and cosmic coordination instrumentation.
+genesis_adaptation_cycles_total = Counter(
+    "genesis_adaptation_cycles_total",
+    "Number of adaptation cycles executed by the planetary intelligence engine.",
+)
+
+genesis_global_energy_mwh = Gauge(
+    "genesis_global_energy_mwh",
+    "Estimated global energy consumption in megawatt hours.",
+)
+
+genesis_latency_mean_ms = Gauge(
+    "genesis_latency_mean_ms",
+    "Mean latency across planetary services in milliseconds.",
+)
+
+genesis_peace_index = Gauge(
+    "genesis_peace_index",
+    "Composite peace index aggregated from planetary telemetry.",
+)
+
+genesis_cosmic_latency_seconds = Histogram(
+    "genesis_cosmic_latency_seconds",
+    "Latency observations recorded while merging cosmic consensus states.",
+    buckets=(0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 20.0, 60.0, 120.0),
+)
+
+genesis_branches_total = Counter(
+    "genesis_branches_total",
+    "Cosmic branches propagated through the expansion network.",
+)
+
+genesis_chronicle_events_total = Counter(
+    "genesis_chronicle_events_total",
+    "Chronicle events recorded by the cosmic service.",
+)
+
+genesis_information_entropy_ratio = Gauge(
+    "genesis_information_entropy_ratio",
+    "Entropy ratio observed across cosmic signal propagation.",
+)
+
+genesis_reconciliation_cycles_total = Counter(
+    "genesis_reconciliation_cycles_total",
+    "Reconciliation cycles executed by the propagation service.",
+)
+
+genesis_seeds_total = Counter(
+    "genesis_seeds_total",
+    "Seed launches recorded by the cosmic seed archive.",
+)
+
+genesis_vault_records_total = Counter(
+    "genesis_vault_records_total",
+    "Vault records replicated across the cosmic archive.",
+)
+
 # Civilization layer instrumentation.
 genesis_federation_peers_total = Gauge(
     "genesis_federation_peers_total",
