@@ -1,0 +1,9 @@
+name: fibonacci
+cases:
+  - input: 5
+    output: 5
+  - input: 8
+    output: 21
+expected_accuracy: 0.98
+expected_latency: 0.1
+expected_stability: 0.95

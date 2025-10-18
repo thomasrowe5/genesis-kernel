@@ -24,6 +24,9 @@ dependencies = [
     "ruff (>=0.14.1,<0.15.0)"
 ]
 
+[project.scripts]
+genesis = "genesis.cli:app"
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
