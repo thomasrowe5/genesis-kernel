@@ -35,8 +35,17 @@ if SQLMODEL_AVAILABLE:
         name: str = Field(index=True)
         version: str
         path: str
+        params_json: Dict[str, Any] = Field(
+            default_factory=dict,
+            sa_column=Column(JSON, nullable=False, default=dict),
+        )
         score: float = Field(default=0.0, index=True)
+        reward_ma: float = Field(default=0.0)
+        p95_ms: float = Field(default=0.0)
+        error_rate: float = Field(default=0.0)
         active: bool = Field(default=False, index=True)
+        canary: bool = Field(default=False, index=True)
+        traffic_share: float = Field(default=0.0)
         metadata_json: Dict[str, Any] = Field(
             default_factory=dict,
             sa_column=Column(JSON, nullable=False, default=dict),
@@ -69,6 +78,20 @@ if SQLMODEL_AVAILABLE:
             sa_column=Column(DateTime(timezone=False), default=datetime.utcnow, nullable=False),
         )
 
+    class OrchestrationEvent(SQLModel, table=True):
+        id: Optional[int] = Field(default=None, primary_key=True)
+        module: str = Field(index=True)
+        version: str
+        type: str = Field(index=True)
+        data_json: Dict[str, Any] = Field(
+            default_factory=dict,
+            sa_column=Column(JSON, nullable=False, default=dict),
+        )
+        at: datetime = Field(
+            default_factory=datetime.utcnow,
+            sa_column=Column(DateTime(timezone=False), default=datetime.utcnow, nullable=False),
+        )
+
 else:
 
     @dataclass(slots=True)
@@ -77,8 +100,14 @@ else:
         name: str
         version: str
         path: str
+        params_json: Dict[str, Any] = field(default_factory=dict)
         score: float = 0.0
+        reward_ma: float = 0.0
+        p95_ms: float = 0.0
+        error_rate: float = 0.0
         active: bool = False
+        canary: bool = False
+        traffic_share: float = 0.0
         metadata_json: Dict[str, Any] = field(default_factory=dict)
         created_at: datetime = field(default_factory=datetime.utcnow)
         updated_at: datetime = field(default_factory=datetime.utcnow)
@@ -93,4 +122,14 @@ else:
         created_at: datetime = field(default_factory=datetime.utcnow)
 
 
-__all__ = ["ModuleVersion", "Event", "SQLMODEL_AVAILABLE"]
+    @dataclass(slots=True)
+    class OrchestrationEvent:
+        id: Optional[int]
+        module: str
+        version: str
+        type: str
+        data_json: Dict[str, Any] = field(default_factory=dict)
+        at: datetime = field(default_factory=datetime.utcnow)
+
+
+__all__ = ["ModuleVersion", "Event", "OrchestrationEvent", "SQLMODEL_AVAILABLE"]
