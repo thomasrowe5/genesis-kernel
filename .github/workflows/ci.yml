@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Poetry
+        run: pip install poetry==1.8.3
+      - name: Configure cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        run: poetry install --no-root
+      - name: Lint
+        run: poetry run ruff check src tests
+      - name: Type check
+        run: poetry run mypy --config-file pyproject.toml src
+      - name: Tests
+        run: poetry run pytest --cov=genesis --cov-report=xml --cov-report=term
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+      - name: Build API image
+        run: docker build -f docker/api.Dockerfile -t genesis-kernel-api .
+      - name: Build worker image
+        run: docker build -f docker/worker.Dockerfile -t genesis-kernel-worker .
