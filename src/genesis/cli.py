@@ -9,7 +9,7 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import typer
 
@@ -55,6 +55,16 @@ from genesis.metacog import Introspector, ReflectionJournal, SelfQueryService, U
 from genesis.metanet.interconnect import FederationProfile
 from genesis.metanet.runtime import get_runtime
 from genesis.reflexion import DigitalTwinBuilder, SimulationChange, TwinSimulator
+from genesis.reflexion.twin import TwinState
+from genesis.temporal import (
+    StatePayload,
+    TemporalBranchManager,
+    TemporalObserver,
+    TemporalRecursionScheduler,
+    TemporalReconciler,
+    TimelineManager,
+)
+from genesis.chronos import ContinuityEnforcer
 from genesis.reflexion.models import SQLMODEL_AVAILABLE
 from genesis.multiverse import (
     BranchState,
@@ -123,6 +133,7 @@ _COSMIC_PRIME_ETHIC = [
 
 _cosmic_service_cache: CosmicNetworkService | None = None
 _cosmic_remote_cache: LongDelayConsensus | None = None
+_temporal_stack_cache: Dict[str, Any] | None = None
 
 
 def _cosmic_service() -> CosmicNetworkService:
@@ -183,92 +194,31 @@ def _build_reflexive_stack(database_url: Optional[str]):
     }
 
 
-_timeline_cache: TimelineRepository | None = None
-_retro_bridge_cache: RetrocausalBridge | None = None
-_retro_verifier_cache: RetroConsistencyVerifier | None = None
-_multiverse_engine_cache: MultiverseCoherenceEngine | None = None
-_multiverse_observer_cache: MultiverseObserver | None = None
+def _build_temporal_stack(database_url: Optional[str]):
+    global _temporal_stack_cache
+    cache_key = database_url or "__default__"
+    if _temporal_stack_cache and _temporal_stack_cache.get("key") == cache_key:
+        return _temporal_stack_cache["stack"]
 
+    session_factory = partial(session_scope, database_url) if SQLMODEL_AVAILABLE else None
+    timeline = TimelineManager(node_id="genesis", session_factory=session_factory)
+    enforcer = ContinuityEnforcer(_COSMIC_PRIME_ETHIC)
+    observer = TemporalObserver(entropy_limit=1.0, session_factory=session_factory)
+    reconciler = TemporalReconciler(enforcer, session_factory=session_factory)
+    branches = TemporalBranchManager(timeline, enforcer, session_factory=session_factory)
+    scheduler = TemporalRecursionScheduler(timeline, observer, session_factory=session_factory)
 
-def _seed_timeline() -> TimelineRepository:
-    commits = [
-        TimelineCommit(
-            commit_id="T-1h",
-            reward=0.71,
-            entropy=0.22,
-            payload={"accuracy": 0.68, "loss": 0.32},
-        ),
-        TimelineCommit(
-            commit_id="T-30m",
-            reward=0.75,
-            entropy=0.18,
-            payload={"accuracy": 0.72, "loss": 0.28},
-        ),
-        TimelineCommit(
-            commit_id="now",
-            reward=0.81,
-            entropy=0.15,
-            payload={"accuracy": 0.78, "loss": 0.22},
-        ),
-    ]
-    return TimelineRepository(commits)
-
-
-def _seed_manifold(timeline: TimelineRepository) -> MultiverseManifold:
-    ordered = timeline.ordered()
-    earliest = ordered[0]
-    latest = ordered[-1]
-    exploratory = {
-        "reward": earliest.reward + 0.04,
-        "entropy": earliest.entropy + 0.05,
+    stack = {
+        "timeline": timeline,
+        "enforcer": enforcer,
+        "observer": observer,
+        "reconciler": reconciler,
+        "branches": branches,
+        "scheduler": scheduler,
+        "session_factory": session_factory,
     }
-    stabilised = {
-        "reward": latest.reward - 0.03,
-        "entropy": max(latest.entropy - 0.02, 0.0),
-    }
-    branches = [
-        BranchState("prime", {"reward": latest.reward, "entropy": latest.entropy}),
-        BranchState("exploratory", exploratory),
-        BranchState("stability", stabilised),
-    ]
-    return MultiverseManifold(branches)
-
-
-def _retro_context() -> dict[str, object]:
-    global _timeline_cache
-    global _retro_bridge_cache
-    global _retro_verifier_cache
-    global _multiverse_engine_cache
-    global _multiverse_observer_cache
-
-    if _retro_bridge_cache is None:
-        timeline = _seed_timeline()
-        simulator = ReverseSimulator(timeline)
-        inference = RetrocausalInferenceEngine(simulator, learning_rate=0.25)
-        verifier = RetroConsistencyVerifier(tolerance=0.05)
-        bridge = RetrocausalBridge(simulator, inference, verifier)
-        manifold = _seed_manifold(timeline)
-        engine = MultiverseCoherenceEngine(manifold, epsilon=0.2)
-        observer = MultiverseObserver(manifold, threshold=0.25)
-        _timeline_cache = timeline
-        _retro_bridge_cache = bridge
-        _retro_verifier_cache = verifier
-        _multiverse_engine_cache = engine
-        _multiverse_observer_cache = observer
-
-    assert _timeline_cache is not None
-    assert _retro_bridge_cache is not None
-    assert _retro_verifier_cache is not None
-    assert _multiverse_engine_cache is not None
-    assert _multiverse_observer_cache is not None
-
-    return {
-        "timeline": _timeline_cache,
-        "bridge": _retro_bridge_cache,
-        "verifier": _retro_verifier_cache,
-        "engine": _multiverse_engine_cache,
-        "observer": _multiverse_observer_cache,
-    }
+    _temporal_stack_cache = {"key": cache_key, "stack": stack}
+    return stack
 
 
 @twin_app.command("snapshot")
@@ -1017,6 +967,195 @@ def verify(
     success = signer.verify(record, module_path, metadata_str)
     status = "success" if success else "failed"
     typer.echo(f"verification={status}")
+
+
+@app.command("snapshot")
+def temporal_snapshot(
+    database_url: Optional[str] = typer.Option(None, "--database-url", help="Database URL override"),
+) -> None:
+    """Record a timeline snapshot using the current twin state."""
+
+    reflexive_stack = _build_reflexive_stack(database_url)
+    temporal_stack = _build_temporal_stack(database_url)
+    try:
+        snapshot = asyncio.run(reflexive_stack["builder"].build_snapshot())
+        reflexive_stack["tracker"].bulk_update(snapshot.metrics.items())
+        commit = temporal_stack["timeline"].record_commit(snapshot.dict())
+        typer.echo(
+            json.dumps(
+                {
+                    "commit_id": commit.id,
+                    "timestamp": commit.timestamp.isoformat(),
+                    "vector_clock": commit.vector_clock,
+                    "hash": commit.hash,
+                },
+                indent=2,
+                default=str,
+            )
+        )
+    finally:
+        session = reflexive_stack["session"]
+        if session is not None:
+            session.close()
+
+
+@app.command("recurse")
+def temporal_recurse(
+    from_timestamp: Optional[str] = typer.Option(None, "--from", help="Timestamp of the commit to simulate"),
+    commit_id: Optional[int] = typer.Option(None, "--commit-id", help="Specific commit identifier to replay"),
+    database_url: Optional[str] = typer.Option(None, "--database-url", help="Database URL override"),
+) -> None:
+    """Simulate an alternate future from a historical snapshot."""
+
+    reflexive_stack = _build_reflexive_stack(database_url)
+    temporal_stack = _build_temporal_stack(database_url)
+    session = reflexive_stack["session"]
+    try:
+        timeline: TimelineManager = temporal_stack["timeline"]
+        if commit_id is not None:
+            try:
+                commit = timeline.get_commit(commit_id)
+            except KeyError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+        elif from_timestamp is not None:
+            try:
+                timestamp = datetime.fromisoformat(from_timestamp)
+            except ValueError as exc:
+                raise typer.BadParameter("Timestamp must be ISO-8601 formatted") from exc
+            try:
+                commit = timeline.get_commit_by_timestamp(timestamp)
+            except KeyError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+        else:
+            commit = timeline.latest()
+            if commit is None:
+                typer.echo("No timeline commits available. Capture a snapshot first.")
+                return
+
+        simulator: TwinSimulator = reflexive_stack["simulator"]
+
+        async def _simulate(state: StatePayload) -> StatePayload:
+            twin_state = TwinState.parse_obj(state)
+            change = SimulationChange(module="temporal", param="recursion", value="auto")
+            result = await simulator.run(change, base_state=twin_state)
+            metrics = dict(twin_state.metrics)
+            for key, delta in result.predicted_delta.items():
+                metrics[key] = metrics.get(key, 0.0) + delta
+            updated = dict(state)
+            updated["metrics"] = metrics
+            return updated
+
+        recursion_result = asyncio.run(
+            temporal_stack["scheduler"].run_from_commit(commit.id, _simulate, label="cli"),
+        )
+        report = temporal_stack["reconciler"].reconcile(recursion_result.prediction, commit.state_json)
+
+        branch_info = None
+        projection_info = None
+        if recursion_result.alert is None:
+            branch = temporal_stack["branches"].create_branch(commit.id, recursion_result.prediction, name="cli")
+            branch_info = {
+                "id": branch.id,
+                "divergence_score": branch.divergence_score,
+            }
+            if report.status.is_consistent and report.score >= 1.0:
+                projection = temporal_stack["scheduler"].materialize_projection(recursion_result, node_id="recursion")
+                projection_info = {
+                    "commit_id": projection.id,
+                    "timestamp": projection.timestamp.isoformat(),
+                    "vector_clock": projection.vector_clock,
+                }
+
+        output = {
+            "base_commit": commit.id,
+            "delta": recursion_result.delta,
+            "status": recursion_result.run.status,
+            "continuity_score": report.score,
+            "violations": report.status.violations,
+            "branch": branch_info,
+            "projection": projection_info,
+        }
+        if recursion_result.alert is not None:
+            output["alert"] = {
+                "type": recursion_result.alert.type,
+                "severity": recursion_result.alert.severity,
+                "description": recursion_result.alert.description,
+            }
+        typer.echo(json.dumps(output, indent=2, default=str))
+    finally:
+        if session is not None:
+            session.close()
+
+
+@app.command("merge")
+def temporal_merge(
+    branch: int = typer.Option(..., "--branch", help="Identifier of the branch to merge"),
+    database_url: Optional[str] = typer.Option(None, "--database-url", help="Database URL override"),
+) -> None:
+    """Merge an alternate future back into the primary timeline."""
+
+    temporal_stack = _build_temporal_stack(database_url)
+    timeline: TimelineManager = temporal_stack["timeline"]
+    latest_commit = timeline.latest()
+    if latest_commit is None:
+        typer.echo("No timeline commits available to compare against.")
+        return
+
+    branches: TemporalBranchManager = temporal_stack["branches"]
+    try:
+        snapshot = branches.snapshot_payload(branch)
+    except KeyError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    report = temporal_stack["reconciler"].reconcile(snapshot, latest_commit.state_json)
+    try:
+        merged = branches.merge_branch(branch, report)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    typer.echo(
+        json.dumps(
+            {
+                "branch_id": merged.id,
+                "continuity_score": report.score,
+                "delta": report.delta,
+                "violations": report.status.violations,
+            },
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("continuity")
+def temporal_continuity(
+    database_url: Optional[str] = typer.Option(None, "--database-url", help="Database URL override"),
+) -> None:
+    """Display the current temporal continuity metrics and alerts."""
+
+    temporal_stack = _build_temporal_stack(database_url)
+    reconciler: TemporalReconciler = temporal_stack["reconciler"]
+    observer: TemporalObserver = temporal_stack["observer"]
+
+    metrics = [
+        {
+            "value": metric.value,
+            "delta": metric.delta,
+            "at": metric.at.isoformat(),
+        }
+        for metric in reconciler.metrics
+    ]
+    alerts = [
+        {
+            "type": alert.type,
+            "severity": alert.severity,
+            "description": alert.description,
+            "at": alert.at.isoformat(),
+        }
+        for alert in observer.alerts
+    ]
+
+    typer.echo(json.dumps({"metrics": metrics, "alerts": alerts}, indent=2, default=str))
 
 
 if __name__ == "__main__":

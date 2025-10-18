@@ -3,47 +3,36 @@ from __future__ import annotations
 
 from prometheus_client import Counter, Gauge, Histogram
 
-# Retrocausal intelligence metrics.
-genesis_retro_runs_total = Counter(
-    "genesis_retro_runs_total",
-    "Total number of retrocausal runs grouped by status.",
+# Temporal recursion metrics.
+genesis_timeline_commits_total = Counter(
+    "genesis_timeline_commits_total",
+    "Total number of timeline commits recorded by the temporal core.",
+)
+
+genesis_recursion_runs_total = Counter(
+    "genesis_recursion_runs_total",
+    "Temporal recursion runs executed by the causal simulator.",
     labelnames=("status",),
 )
 
-genesis_retro_entropy_delta = Histogram(
-    "genesis_retro_entropy_delta",
-    "Aggregated entropy delta observed during retro simulations.",
-    buckets=(
-        -1.0,
-        -0.5,
-        -0.1,
-        -0.05,
-        0.0,
-        0.05,
-        0.1,
-        0.5,
-        1.0,
-    ),
+genesis_branch_merges_total = Counter(
+    "genesis_branch_merges_total",
+    "Total number of alternate futures merged back into the main timeline.",
 )
 
-genesis_retro_consistency_score = Gauge(
-    "genesis_retro_consistency_score",
-    "Latest retrocausal consistency verification score.",
+genesis_entropy_delta = Gauge(
+    "genesis_entropy_delta",
+    "Latest entropy delta observed between predicted and actual metrics.",
 )
 
-genesis_paradox_preventions_total = Counter(
-    "genesis_paradox_preventions_total",
-    "Retrocausal paradox prevention events.",
+genesis_continuity_score = Gauge(
+    "genesis_continuity_score",
+    "Continuity score representing alignment between predicted and actual states.",
 )
 
-genesis_multiverse_branches_total = Gauge(
-    "genesis_multiverse_branches_total",
-    "Number of active branches represented in the multiverse manifold.",
-)
-
-genesis_multiverse_coherence_score = Gauge(
-    "genesis_multiverse_coherence_score",
-    "Coherence score emitted after multiverse merges.",
+genesis_temporal_violations_total = Counter(
+    "genesis_temporal_violations_total",
+    "Temporal violations detected by the causality observer.",
 )
 
 # Reflexive intelligence metrics.
@@ -136,6 +125,47 @@ genesis_rl_reward = Gauge(
 genesis_rl_update_total = Counter(
     "genesis_rl_update_total",
     "Number of optimizer updates processed.",
+)
+
+genesis_cosmic_latency_seconds = Histogram(
+    "genesis_cosmic_latency_seconds",
+    "Latency distribution for long-delay cosmic consensus links.",
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
+)
+
+genesis_adaptation_cycles_total = Counter(
+    "genesis_adaptation_cycles_total",
+    "Total number of adaptation engine cycles executed globally.",
+)
+
+genesis_reconciliation_cycles_total = Counter(
+    "genesis_reconciliation_cycles_total",
+    "Propagation reconciliation cycles executed across cosmic relays.",
+)
+
+genesis_seeds_total = Counter(
+    "genesis_seeds_total",
+    "Seed packages generated for cosmic propagation.",
+)
+
+genesis_branches_total = Counter(
+    "genesis_branches_total",
+    "Cosmic branches synchronized across the federation mesh.",
+)
+
+genesis_chronicle_events_total = Counter(
+    "genesis_chronicle_events_total",
+    "Chronicle events recorded across archival ledgers.",
+)
+
+genesis_information_entropy_ratio = Gauge(
+    "genesis_information_entropy_ratio",
+    "Information entropy ratio across interstellar data channels.",
+)
+
+genesis_vault_records_total = Counter(
+    "genesis_vault_records_total",
+    "Vault records processed by cosmic archival retrieval.",
 )
 
 # Cache and rate-limit instrumentation.
@@ -330,44 +360,48 @@ genesis_self_repair_events_total = Counter(
     "Self repair events triggered by lifecycle management.",
 )
 
-genesis_exchanges_total = Counter(
-    "genesis_exchanges_total",
-    "Cross-federation exchanges executed across the meta-network.",
+genesis_global_energy_mwh = Gauge(
+    "genesis_global_energy_mwh",
+    "Aggregate energy consumption tracked across the Genesis federation (MWh).",
 )
 
-genesis_metanet_federations_total = Gauge(
-    "genesis_metanet_federations_total",
-    "Federations currently connected through the meta-network interconnect.",
+genesis_latency_mean_ms = Gauge(
+    "genesis_latency_mean_ms",
+    "Mean interconnect latency measured across the metanet fabric (ms).",
 )
 
-genesis_treaties_active_total = Gauge(
-    "genesis_treaties_active_total",
-    "Active treaties negotiated across federations.",
+genesis_peace_index = Gauge(
+    "genesis_peace_index",
+    "Composite stability index aggregated from planetary law sensors.",
 )
 
 genesis_law_cases_total = Counter(
     "genesis_law_cases_total",
-    "Law cases adjudicated by the planetary courts.",
+    "Planetary law cases processed by the judicial engine.",
+)
+
+genesis_exchanges_total = Counter(
+    "genesis_exchanges_total",
+    "Metanet exchanges synchronized across federations.",
+)
+
+genesis_metanet_federations_total = Gauge(
+    "genesis_metanet_federations_total",
+    "Federations currently connected to the metanet interconnect.",
+)
+
+genesis_treaties_active_total = Gauge(
+    "genesis_treaties_active_total",
+    "Active treaties enforced across the metanet diplomacy layer.",
 )
 
 __all__ = [
-    "genesis_retro_runs_total",
-    "genesis_retro_entropy_delta",
-    "genesis_retro_consistency_score",
-    "genesis_paradox_preventions_total",
-    "genesis_multiverse_branches_total",
-    "genesis_multiverse_coherence_score",
-    "genesis_cosmic_latency_seconds",
-    "genesis_adaptation_cycles_total",
-    "genesis_global_energy_mwh",
-    "genesis_latency_mean_ms",
-    "genesis_peace_index",
-    "genesis_branches_total",
-    "genesis_chronicle_events_total",
-    "genesis_information_entropy_ratio",
-    "genesis_reconciliation_cycles_total",
-    "genesis_seeds_total",
-    "genesis_vault_records_total",
+    "genesis_timeline_commits_total",
+    "genesis_recursion_runs_total",
+    "genesis_branch_merges_total",
+    "genesis_entropy_delta",
+    "genesis_continuity_score",
+    "genesis_temporal_violations_total",
     "genesis_eval_duration_seconds",
     "genesis_module_score",
     "genesis_replacements_total",
@@ -377,6 +411,10 @@ __all__ = [
     "genesis_traffic_share",
     "genesis_rl_reward",
     "genesis_rl_update_total",
+    "genesis_cosmic_latency_seconds",
+    "genesis_adaptation_cycles_total",
+    "genesis_reconciliation_cycles_total",
+    "genesis_seeds_total",
     "genesis_cache_hits_total",
     "genesis_rate_limit_drops_total",
     "genesis_orch_decision_duration_seconds",
@@ -399,10 +437,17 @@ __all__ = [
     "genesis_ethics_violations_total",
     "genesis_replica_boots_total",
     "genesis_self_repair_events_total",
+    "genesis_global_energy_mwh",
+    "genesis_latency_mean_ms",
+    "genesis_branches_total",
+    "genesis_chronicle_events_total",
+    "genesis_information_entropy_ratio",
+    "genesis_vault_records_total",
+    "genesis_peace_index",
+    "genesis_law_cases_total",
     "genesis_exchanges_total",
     "genesis_metanet_federations_total",
     "genesis_treaties_active_total",
-    "genesis_law_cases_total",
     "genesis_reflexive_cycles_total",
     "genesis_simulations_total",
     "genesis_reflection_confidence_mean",
