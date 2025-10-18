@@ -1,0 +1,51 @@
+site_name: "Genesis v1.0.1 Documentation"
+site_description: "Unified documentation set for the Genesis Perfection Build"
+site_url: "https://example.com/genesis"
+repo_url: "https://example.com/genesis/kernel"
+repo_name: "genesis-kernel"
+docs_dir: docs
+nav:
+  - Overview:
+      - "Architecture Overview": architecture_overview.md
+      - "Operations Manual": operations_manual.md
+      - "Performance Benchmarks": performance_benchmarks.md
+  - API & Interfaces:
+      - "Unified API Reference": api_reference.md
+      - "Reproducibility Playbook": reproducibility.md
+  - Research:
+      - "Research Whitepaper": research_whitepaper.md
+  - Release Notes:
+      - "Changelog": changelog.md
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - search.highlight
+    - content.code.copy
+    - palette.toggle
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+extra:
+  version:
+    name: v1.0.1
+    provider: mkdocs
