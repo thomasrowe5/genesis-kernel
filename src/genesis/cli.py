@@ -43,10 +43,43 @@ from genesis.research import (
     ExperimentRunner,
     Insight,
 )
+from genesis.metanet.interconnect import FederationProfile
+from genesis.metanet.runtime import get_runtime
 
 app = typer.Typer(help="Genesis self-optimization utilities")
 cluster_app = typer.Typer(help="Cluster management commands")
+treaty_app = typer.Typer(help="Inter-federation treaty coordination")
+exchange_app = typer.Typer(help="Inter-federation exchange controls")
+metrics_app = typer.Typer(help="Observability metrics")
 app.add_typer(cluster_app, name="cluster")
+app.add_typer(treaty_app, name="treaty")
+app.add_typer(exchange_app, name="exchange")
+app.add_typer(metrics_app, name="metrics")
+
+
+_LOCAL_FEDERATION_ID = "federation-alpha"
+
+
+def _metanet_runtime():
+    return get_runtime()
+
+
+def _ensure_federation(federation_id: str, name: str | None = None) -> None:
+    runtime = _metanet_runtime()
+    if federation_id in runtime.federation_keys:
+        return
+    profile = FederationProfile(
+        federation_id=federation_id,
+        human_name=name or federation_id.replace("-", " ").title(),
+        public_key=f"pk-{federation_id}",
+        endpoints=[f"https://{federation_id}.local"],
+        capabilities={"energy": 1.0, "compute": 1.0},
+    )
+    asyncio.run(runtime.register_federation(profile))
+
+
+def _ensure_local_federation() -> None:
+    _ensure_federation(_LOCAL_FEDERATION_ID, name="Genesis Prime")
 
 
 def _module_path(module: str) -> str:
@@ -192,6 +225,79 @@ def _parse_metric_pairs(pairs: list[str]) -> dict[str, float]:
         except ValueError as exc:  # pragma: no cover - defensive
             raise typer.BadParameter(f"Invalid numeric value in '{pair}'") from exc
     return metrics
+
+
+@treaty_app.command("propose")
+def treaty_propose(
+    partner: str = typer.Option(..., "--partner", help="Partner federation identifier."),
+    payload: str = typer.Option(..., "--payload", help="Treaty payload JSON."),
+) -> None:
+    """Propose and ratify a treaty with a partner federation."""
+
+    _ensure_local_federation()
+    _ensure_federation(partner)
+    runtime = _metanet_runtime()
+    parties = [_LOCAL_FEDERATION_ID, partner]
+    data = json.loads(payload)
+    public_keys = {party: runtime.public_key(party) for party in parties}
+    treaty = asyncio.run(
+        runtime.diplomat.negotiate_treaty(parties=parties, payload=data, public_keys=public_keys)
+    )
+    runtime.intelligence.update_peace_index(runtime.treaties.active_treaty_count(), disputes=0)
+    typer.echo(f"treaty_id={treaty.treaty_id} state={treaty.state.value}")
+
+
+@treaty_app.command("vote")
+def treaty_vote(
+    treaty_id: str = typer.Option(..., "--id", help="Treaty identifier."),
+    decision: str = typer.Option(..., "--decision", help="approve or reject"),
+) -> None:
+    """Cast a vote on a treaty for the local federation."""
+
+    _ensure_local_federation()
+    runtime = _metanet_runtime()
+    key = runtime.public_key(_LOCAL_FEDERATION_ID)
+    runtime.treaties.sign(treaty_id, _LOCAL_FEDERATION_ID, key)
+    approve = decision.lower() == "approve"
+    runtime.treaties.vote(treaty_id, _LOCAL_FEDERATION_ID, approve, key)
+    typer.echo(f"treaty_id={treaty_id} decision={'approved' if approve else 'rejected'}")
+
+
+@exchange_app.command("trade")
+def exchange_trade(
+    partner: str = typer.Option(..., "--partner", help="Partner federation identifier."),
+    credits: float = typer.Option(..., "--credits", help="Credit amount to transfer."),
+) -> None:
+    """Execute an inter-federation exchange transaction."""
+
+    _ensure_local_federation()
+    _ensure_federation(partner)
+    runtime = _metanet_runtime()
+    receipt = runtime.ledger.execute_atomic_swap(
+        from_federation=_LOCAL_FEDERATION_ID,
+        to_federation=partner,
+        amount=credits,
+    )
+    typer.echo(f"tx_id={receipt.tx_id} proof={receipt.proof_hash}")
+
+
+@app.command()
+def adapt(goal: str = typer.Option(..., "--goal", help="Global adaptation objective.")) -> None:
+    """Optimise the global task allocation for the supplied goal."""
+
+    _ensure_local_federation()
+    runtime = _metanet_runtime()
+    plan = asyncio.run(runtime.diplomat.adapt_global_state(goal))
+    typer.echo(json.dumps(plan))
+
+
+@metrics_app.command("global")
+def metrics_global() -> None:
+    """Display aggregated global metrics."""
+
+    runtime = _metanet_runtime()
+    snapshot = runtime.intelligence.snapshot()
+    typer.echo(json.dumps(snapshot))
 
 
 @app.command()

@@ -163,6 +163,47 @@ genesis_knowledge_nodes_total = Gauge(
     "Number of nodes tracked in the knowledge graph.",
 )
 
+# Planetary meta-network observability.
+genesis_metanet_federations_total = Gauge(
+    "genesis_metanet_federations_total",
+    "Federations currently participating in the planetary meta-network.",
+)
+
+genesis_treaties_active_total = Gauge(
+    "genesis_treaties_active_total",
+    "Number of active treaties across the planetary meta-network.",
+)
+
+genesis_exchanges_total = Counter(
+    "genesis_exchanges_total",
+    "Total number of inter-federation exchange transactions committed.",
+)
+
+genesis_adaptation_cycles_total = Counter(
+    "genesis_adaptation_cycles_total",
+    "Adaptation cycles executed by the global coordination engine.",
+)
+
+genesis_law_cases_total = Counter(
+    "genesis_law_cases_total",
+    "Court cases adjudicated by the planetary law engine.",
+)
+
+genesis_global_energy_mwh = Gauge(
+    "genesis_global_energy_mwh",
+    "Rolling energy consumption observed across the federations (MWh).",
+)
+
+genesis_latency_mean_ms = Gauge(
+    "genesis_latency_mean_ms",
+    "Mean latency (ms) across active federation links.",
+)
+
+genesis_peace_index = Gauge(
+    "genesis_peace_index",
+    "Composite peace index derived from active treaties and disputes.",
+)
+
 __all__ = [
     "genesis_eval_duration_seconds",
     "genesis_module_score",
@@ -189,5 +230,13 @@ __all__ = [
     "genesis_theorist_updates_total",
     "genesis_publications_total",
     "genesis_knowledge_nodes_total",
+    "genesis_metanet_federations_total",
+    "genesis_treaties_active_total",
+    "genesis_exchanges_total",
+    "genesis_adaptation_cycles_total",
+    "genesis_law_cases_total",
+    "genesis_global_energy_mwh",
+    "genesis_latency_mean_ms",
+    "genesis_peace_index",
 ]
 
