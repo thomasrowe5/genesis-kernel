@@ -1,6 +1,7 @@
 """Worker runner integrating routing, caching, and optimization."""
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Tuple
 
@@ -10,6 +11,8 @@ from ..optimizer.online import OnlineOptimizer, Outcome
 from ..router.cache import CACHEABLE_TASKS, InMemoryCache
 from ..router.rate_limit import TokenBucketRateLimiter
 from ..router.router import PromptRouter
+from ..metrics import genesis_worker_task_duration_seconds
+from ..utils.context import log_context
 
 
 @dataclass(slots=True)
@@ -70,9 +73,28 @@ class WorkerRunner:
             cached = self._cache.get(cache_key)
             if cached:
                 return cached.value
-        result = self._executor(decision.module, decision.version, args, kwargs)
+        start = time.perf_counter()
+        status_label = "error"
+        with log_context(
+            job_id=context.get("job_id"),
+            task_type=task_type,
+            module=decision.module,
+            version=decision.version,
+        ):
+            try:
+                result = self._executor(decision.module, decision.version, args, kwargs)
+            except Exception:
+                elapsed = time.perf_counter() - start
+                genesis_worker_task_duration_seconds.labels(
+                    task_type=task_type,
+                    module=decision.module,
+                    version=decision.version,
+                    status=status_label,
+                ).observe(elapsed)
+                raise
         if not isinstance(result, ExecutionResult):
             raise TypeError("Executor must return ExecutionResult")
+        status_label = "success" if result.success else "error"
         if result.success and cache_key is not None:
             ttl = CACHEABLE_TASKS.get(task_type, self._cache.default_ttl)
             if ttl > 0:
@@ -86,6 +108,13 @@ class WorkerRunner:
                 success=result.success,
             )
         )
+        elapsed = time.perf_counter() - start
+        genesis_worker_task_duration_seconds.labels(
+            task_type=task_type,
+            module=decision.module,
+            version=decision.version,
+            status=status_label,
+        ).observe(elapsed)
         return result.output
 
     def _is_cacheable(self, task_type: str) -> bool:

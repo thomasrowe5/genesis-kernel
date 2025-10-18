@@ -19,6 +19,7 @@ import typer
 from functools import partial
 
 from genesis.core import get_settings
+from genesis.metrics import collect_metric_samples, update_uptime_metric
 from genesis.cognition import (
     ExperimentPlanner,
     PlannerContext,
@@ -91,6 +92,27 @@ app.add_typer(twin_app, name="twin")
 app.add_typer(benchmark_app, name="benchmark")
 app.add_typer(docs_app, name="docs")
 app.add_typer(release_app, name="release")
+
+
+@app.command("diag")
+def diag(
+    output: Optional[Path] = typer.Option(None, "--output", help="Optional file path for JSON diagnostic dump."),
+) -> None:
+    """Print a snapshot of live metrics and uptime state."""
+
+    uptime = update_uptime_metric()
+    metrics_snapshot = collect_metric_samples("genesis_")
+    payload = {
+        "uptime_seconds": round(uptime, 3),
+        "metrics": metrics_snapshot,
+    }
+    rendered = json.dumps(payload, indent=2)
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(rendered + "\n", encoding="utf-8")
+        typer.echo(f"Diagnostics written to {output}")
+    else:
+        typer.echo(rendered)
 
 
 def _ensure_collective_tables(database_url: Optional[str]) -> None:

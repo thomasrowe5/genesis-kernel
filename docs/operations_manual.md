@@ -43,7 +43,8 @@ are provisioned via Kubernetes secrets before deploying.
 ## Observability
 - Prometheus scrapes metrics from the API gateway on port `9000`.
 - Grafana dashboards are provisioned via `infra/grafana/dashboard.json`.
-- Structured JSON logs are emitted by default for ingestion into log aggregators.
+- Structured JSON logs include `trace_id`, `job_id`, and HTTP metadata for correlation.
+- Capture a point-in-time snapshot by running `poetry run genesis diag --output diagnostics.json`.
 
 ## Benchmarks
 
@@ -60,3 +61,4 @@ Results are stored in the `benchmarks/` directory by default and exported as JSO
 - Inspect Docker container logs for failing services.
 - Ensure RBAC keys are loaded – missing credentials cause `401` responses on health endpoints.
 - Use `poetry run genesis docs build` to regenerate docs and verify configuration hints.
+- Run `poetry run genesis diag` to confirm critical metrics such as `genesis_uptime_seconds` and `genesis_retry_total`.

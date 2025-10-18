@@ -9,6 +9,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
+from genesis.utils.context import get_log_context
+
 
 def _parse_bool(value: str | None, default: bool) -> bool:
     if value is None:
@@ -135,6 +137,7 @@ class _JSONFormatter(logging.Formatter):
             "service": getattr(record, "service", None),
             "time": self.formatTime(record, self.datefmt),
         }
+        payload.update(get_log_context())
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False)
@@ -151,7 +154,7 @@ def configure_logging(settings: Optional[LoggingSettings] = None) -> None:
         formatter = _JSONFormatter()
     else:
         formatter = logging.Formatter(
-            fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+            fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s | %(context)s",
             datefmt="%Y-%m-%dT%H:%M:%S%z",
         )
     handler.setFormatter(formatter)
@@ -159,6 +162,7 @@ def configure_logging(settings: Optional[LoggingSettings] = None) -> None:
     class _ServiceFilter(logging.Filter):
         def filter(self, record: logging.LogRecord) -> bool:
             setattr(record, "service", logging_settings.service_name)
+            setattr(record, "context", json.dumps(get_log_context()))
             return True
 
     handler.addFilter(_ServiceFilter())
