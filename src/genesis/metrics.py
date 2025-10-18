@@ -92,6 +92,39 @@ genesis_orch_decision_duration_seconds = Histogram(
     ),
 )
 
+# Cluster metrics
+genesis_cluster_nodes_total = Gauge(
+    "genesis_cluster_nodes_total",
+    "Total number of nodes registered in the Genesis cluster.",
+)
+
+genesis_cluster_heartbeat_lag_seconds = Gauge(
+    "genesis_cluster_heartbeat_lag_seconds",
+    "Seconds since the last heartbeat was received for each node.",
+    labelnames=("node_id",),
+)
+
+genesis_provenance_edges_total = Counter(
+    "genesis_provenance_edges_total",
+    "Total number of provenance edges recorded.",
+)
+
+genesis_policy_violations_total = Counter(
+    "genesis_policy_violations_total",
+    "Total number of policy violations detected by governance.",
+)
+
+genesis_replay_runs_total = Counter(
+    "genesis_replay_runs_total",
+    "Number of replay operations executed.",
+)
+
+genesis_signature_verifications_total = Counter(
+    "genesis_signature_verifications_total",
+    "Number of signature verification events.",
+    labelnames=("status",),
+)
+
 __all__ = [
     "genesis_eval_duration_seconds",
     "genesis_module_score",
@@ -105,4 +138,11 @@ __all__ = [
     "genesis_cache_hits_total",
     "genesis_rate_limit_drops_total",
     "genesis_orch_decision_duration_seconds",
+    "genesis_cluster_nodes_total",
+    "genesis_cluster_heartbeat_lag_seconds",
+    "genesis_provenance_edges_total",
+    "genesis_policy_violations_total",
+    "genesis_replay_runs_total",
+    "genesis_signature_verifications_total",
 ]
+
