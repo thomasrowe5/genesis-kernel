@@ -4,19 +4,45 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import typer
 
+from genesis.cognition import (
+    ExperimentPlanner,
+    PlannerContext,
+    ReportSummarizer,
+    Theorist,
+)
+from genesis.cognition.state import CognitionState
 from genesis.db import get_engine
 from genesis.evaluator.autotest_client import AutoTestClient
 from genesis.evaluator.service import EvaluatorService
+from genesis.knowledge import (
+    EmbeddingRecord,
+    EmbeddingStore,
+    KnowledgeEdge,
+    KnowledgeGraph,
+    KnowledgeNode,
+    KnowledgeNodeType,
+    KnowledgeRelation,
+    KnowledgeRetriever,
+)
 from genesis.optimizer.loop import OptimizerLoop
 from genesis.registry.manager import ModuleRegistryManager
 from genesis.cluster.node import _default_service
 from genesis.governance.signer import ModuleSigner, SignatureRecord
 from genesis.provenance.replay import ReplayRequest
+from genesis.research import (
+    ExperimentPlan,
+    ExperimentReporter,
+    ExperimentRunner,
+    Insight,
+)
 
 app = typer.Typer(help="Genesis self-optimization utilities")
 cluster_app = typer.Typer(help="Cluster management commands")
@@ -67,6 +93,180 @@ def eval(
     finally:
         if session:
             session.close()
+
+
+@dataclass(slots=True)
+class CognitionEnvironment:
+    state: CognitionState
+    planner: ExperimentPlanner
+    runner: ExperimentRunner
+    reporter: ExperimentReporter
+    summarizer: ReportSummarizer
+    theorist: Theorist
+
+
+def _default_cognition_state_path() -> Path:
+    return Path.home() / ".genesis" / "cognition_state.json"
+
+
+def _build_cognition_environment(state_path: Optional[Path]) -> CognitionEnvironment:
+    path = state_path or _default_cognition_state_path()
+    state = CognitionState(path)
+    graph = KnowledgeGraph()
+    embeddings = EmbeddingStore()
+
+    modules = [
+        ("module-fibonacci", "fibonacci", [1.0, 0.5, 0.2]),
+        ("module-triangular", "triangular", [0.8, 0.4, 0.1]),
+    ]
+    metrics = [
+        ("metric-reward", "reward"),
+        ("metric-latency", "latency"),
+    ]
+    for identifier, label, vector in modules:
+        graph.add_node(
+            KnowledgeNode(
+                id=identifier,
+                type=KnowledgeNodeType.MODULE,
+                label=label,
+                properties={"domain": "math"},
+            )
+        )
+        embeddings.add(EmbeddingRecord(node_id=identifier, vector=vector))
+    for identifier, label in metrics:
+        graph.add_node(
+            KnowledgeNode(
+                id=identifier,
+                type=KnowledgeNodeType.METRIC,
+                label=label,
+                properties={},
+            )
+        )
+    graph.add_edge(
+        KnowledgeEdge(
+            id="edge-fibonacci-reward",
+            src_id="module-fibonacci",
+            dst_id="metric-reward",
+            relation=KnowledgeRelation.IMPROVES,
+            properties={},
+        )
+    )
+    retriever = KnowledgeRetriever(graph, embeddings)
+    planner = ExperimentPlanner(graph, retriever)
+
+    async def _simulate(plan: ExperimentPlan) -> dict[str, float]:
+        rng = random.Random(plan.seed)
+        await asyncio.sleep(0)
+        return {
+            metric: value + rng.uniform(-0.05, 0.15) for metric, value in plan.metrics.items()
+        }
+
+    runner = ExperimentRunner(_simulate)
+    reporter = ExperimentReporter()
+    for result in state.results():
+        reporter.add_result(result)
+    for insight_text in state.insights():
+        reporter.seed_insight(
+            Insight(statement=insight_text, confidence=0.5, evidence={}, created_at=datetime.utcnow())
+        )
+    summarizer = ReportSummarizer()
+    theorist = Theorist()
+    return CognitionEnvironment(
+        state=state,
+        planner=planner,
+        runner=runner,
+        reporter=reporter,
+        summarizer=summarizer,
+        theorist=theorist,
+    )
+
+
+def _parse_metric_pairs(pairs: list[str]) -> dict[str, float]:
+    metrics: dict[str, float] = {}
+    for pair in pairs:
+        if "=" not in pair:
+            raise typer.BadParameter(f"Invalid metric pair '{pair}'. Use metric=value format.")
+        name, value_str = pair.split("=", 1)
+        try:
+            metrics[name] = float(value_str)
+        except ValueError as exc:  # pragma: no cover - defensive
+            raise typer.BadParameter(f"Invalid numeric value in '{pair}'") from exc
+    return metrics
+
+
+@app.command()
+def plan(
+    goal: str = typer.Option(..., "--goal", help="Research objective."),
+    metric: list[str] = typer.Option([], "--metric", help="Performance gap metric=value pairs."),
+    limit: int = typer.Option(1, help="Number of plans to generate."),
+    state_path: Optional[Path] = typer.Option(None, help="Override cognition state path."),
+) -> None:
+    """Generate experiment plans for the cognition stack."""
+
+    env = _build_cognition_environment(state_path)
+    context = PlannerContext(goal=goal, performance_gaps=_parse_metric_pairs(metric), prior_metrics={})
+    plans = env.planner.propose(context, limit=limit)
+    for plan_item in plans:
+        env.state.add_plan(plan_item)
+        typer.echo(
+            f"plan_id={plan_item.id} goal='{plan_item.goal}' hypothesis='{plan_item.hypothesis}' metrics={plan_item.metrics}"
+        )
+
+
+@app.command()
+def run(
+    plan_id: str = typer.Option(..., "--plan", help="Plan identifier to execute."),
+    state_path: Optional[Path] = typer.Option(None, help="Override cognition state path."),
+) -> None:
+    """Execute an experiment plan via the cognition runner."""
+
+    env = _build_cognition_environment(state_path)
+    plan_item = env.state.get_plan(plan_id)
+    if plan_item is None:
+        raise typer.BadParameter(f"Unknown plan {plan_id}")
+    result = asyncio.run(env.runner.run(plan_item))
+    env.state.add_result(result)
+    env.reporter.add_result(result)
+    typer.echo(
+        f"plan_id={result.plan_id} success={result.success} conclusion='{result.conclusion}' metrics={result.metrics}"
+    )
+
+
+@app.command()
+def insight(
+    state_path: Optional[Path] = typer.Option(None, help="Override cognition state path."),
+) -> None:
+    """Derive insights from accumulated experiment runs."""
+
+    env = _build_cognition_environment(state_path)
+    update = env.theorist.derive(env.state.results())
+    env.reporter.record_insight(update.statement, update.metrics)
+    env.state.add_insight(update.statement)
+    typer.echo(f"insight='{update.statement}' metrics={update.metrics}")
+
+
+@app.command()
+def report(
+    plan_id: str = typer.Option(..., "--id", help="Plan identifier to summarise."),
+    format: str = typer.Option("markdown", "--format", help="Output format (markdown|pdf)."),
+    state_path: Optional[Path] = typer.Option(None, help="Override cognition state path."),
+) -> None:
+    """Generate a research report for a completed plan."""
+
+    env = _build_cognition_environment(state_path)
+    plan_item = env.state.get_plan(plan_id)
+    if plan_item is None:
+        raise typer.BadParameter(f"Unknown plan {plan_id}")
+    result = env.state.get_result(plan_id)
+    if result is None:
+        raise typer.BadParameter("Plan has not been executed")
+    summary = env.summarizer.render(plan_item, result, env.state.insights())
+    destination = Path(f"report_{plan_id}.md")
+    destination.write_text(summary.content, encoding="utf-8")
+    message = f"report_path={destination} format={format}"
+    if format.lower() == "pdf":
+        message += " note='PDF export not available in CLI; wrote Markdown instead.'"
+    typer.echo(message)
 
 
 @app.command()

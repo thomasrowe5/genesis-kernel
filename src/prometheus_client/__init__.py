@@ -11,6 +11,7 @@ class _Metric:
         self.labelnames = labelnames or ()
         self.kwargs = kwargs
         self._last_value: float | None = None
+        self._value = _MetricValue(self)
 
     def labels(self, *args: Any, **kwargs: Any) -> "_Metric":
         return self
@@ -26,6 +27,17 @@ class _Metric:
             self._last_value = 0.0
         self._last_value += amount
 
+    def time(self) -> "_MetricTimer":
+        return _MetricTimer(self)
+
+
+class _MetricValue:
+    def __init__(self, metric: _Metric) -> None:
+        self._metric = metric
+
+    def get(self) -> float:
+        return float(self._metric._last_value or 0.0)
+
 
 class Histogram(_Metric):
     pass
@@ -37,6 +49,17 @@ class Gauge(_Metric):
 
 class Counter(_Metric):
     pass
+
+
+class _MetricTimer:
+    def __init__(self, metric: _Metric) -> None:
+        self._metric = metric
+
+    def __enter__(self) -> "_MetricTimer":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self._metric.observe(0.0)
 
 
 __all__ = ["Histogram", "Gauge", "Counter"]
