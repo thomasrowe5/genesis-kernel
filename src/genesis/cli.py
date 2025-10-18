@@ -21,6 +21,7 @@ from genesis.cognition import (
     ReportSummarizer,
     Theorist,
 )
+from genesis.adaptation import AdaptationPlanner, ChangeValidator
 from genesis.cognition.state import CognitionState
 from genesis.db import get_engine, session_scope
 from genesis.collective import FederationMesh
@@ -50,8 +51,11 @@ from genesis.research import (
     ExperimentRunner,
     Insight,
 )
+from genesis.metacog import Introspector, ReflectionJournal, SelfQueryService, UncertaintyTracker
 from genesis.metanet.interconnect import FederationProfile
 from genesis.metanet.runtime import get_runtime
+from genesis.reflexion import DigitalTwinBuilder, SimulationChange, TwinSimulator
+from genesis.reflexion.models import SQLMODEL_AVAILABLE
 
 app = typer.Typer(help="Genesis self-optimization utilities")
 cluster_app = typer.Typer(help="Cluster management commands")
@@ -65,6 +69,8 @@ ledger_app = typer.Typer(help="Economy ledger utilities")
 app.add_typer(peer_app, name="peer")
 app.add_typer(proposal_app, name="proposal")
 app.add_typer(ledger_app, name="ledger")
+twin_app = typer.Typer(help="Digital twin operations")
+app.add_typer(twin_app, name="twin")
 
 
 def _ensure_collective_tables(database_url: Optional[str]) -> None:
@@ -122,6 +128,138 @@ def _build_manager(database_url: Optional[str]) -> tuple[ModuleRegistryManager, 
         return ModuleRegistryManager(session), session
     except Exception:
         return ModuleRegistryManager(), None
+
+
+def _build_reflexive_stack(database_url: Optional[str]):
+    registry, session = _build_manager(database_url)
+    session_factory = partial(session_scope, database_url) if SQLMODEL_AVAILABLE else None
+    tracker = UncertaintyTracker()
+    journal = ReflectionJournal(session_factory=session_factory)
+    builder = DigitalTwinBuilder(registry, session_factory=session_factory)
+    simulator = TwinSimulator(builder, session_factory=session_factory)
+    introspector = Introspector(tracker=tracker)
+    validator = ChangeValidator()
+    self_query = SelfQueryService(tracker, journal)
+    planner = AdaptationPlanner(
+        twin_builder=builder,
+        simulator=simulator,
+        introspector=introspector,
+        validator=validator,
+        journal=journal,
+        self_query=self_query,
+    )
+    return {
+        "registry": registry,
+        "session": session,
+        "builder": builder,
+        "simulator": simulator,
+        "tracker": tracker,
+        "journal": journal,
+        "self_query": self_query,
+        "planner": planner,
+        "introspector": introspector,
+        "validator": validator,
+    }
+
+
+@twin_app.command("snapshot")
+def twin_snapshot(
+    database_url: Optional[str] = typer.Option(None, "--database-url", help="Database URL override"),
+) -> None:
+    stack = _build_reflexive_stack(database_url)
+    try:
+        snapshot = asyncio.run(stack["builder"].build_snapshot())
+        stack["tracker"].bulk_update(snapshot.metrics.items())
+        typer.echo(json.dumps(snapshot.dict(), indent=2, default=str))
+    finally:
+        session = stack["session"]
+        if session is not None:
+            session.close()
+
+
+@app.command("simulate")
+def reflex_simulate(
+    change: str = typer.Option(..., "--change", help="JSON change specification"),
+    database_url: Optional[str] = typer.Option(None, "--database-url", help="Database URL override"),
+) -> None:
+    try:
+        payload = json.loads(change)
+    except json.JSONDecodeError as exc:  # pragma: no cover - defensive
+        raise typer.BadParameter("Change specification must be valid JSON") from exc
+
+    stack = _build_reflexive_stack(database_url)
+    try:
+        change_model = SimulationChange(**payload)
+        decision = asyncio.run(stack["planner"].plan(change_model))
+        output = {
+            "change": decision.change.dict(),
+            "predicted_delta": decision.simulation.predicted_delta,
+            "confidence": decision.simulation.confidence,
+            "introspection": decision.introspection.dict(),
+            "validation": {
+                "accepted": decision.validation.accepted,
+                "reasons": decision.validation.reasons,
+            },
+        }
+        typer.echo(json.dumps(output, indent=2, default=str))
+    finally:
+        session = stack["session"]
+        if session is not None:
+            session.close()
+
+
+@app.command("reflect")
+def reflex_reflect(
+    since: Optional[str] = typer.Option(None, "--since", help="ISO timestamp filter"),
+    database_url: Optional[str] = typer.Option(None, "--database-url", help="Database URL override"),
+) -> None:
+    stack = _build_reflexive_stack(database_url)
+    try:
+        since_dt = datetime.fromisoformat(since) if since else None
+        entries = stack["journal"].query(since=since_dt)
+        payload = [
+            {
+                "reason": entry.reason,
+                "prediction": entry.prediction,
+                "result": entry.result,
+                "delta": entry.delta,
+                "confidence": entry.confidence,
+                "created_at": entry.created_at.isoformat(),
+            }
+            for entry in entries
+        ]
+        typer.echo(json.dumps(payload, indent=2, default=str))
+    finally:
+        session = stack["session"]
+        if session is not None:
+            session.close()
+
+
+@app.command("uncertainty")
+def reflex_uncertainty(
+    database_url: Optional[str] = typer.Option(None, "--database-url", help="Database URL override"),
+) -> None:
+    stack = _build_reflexive_stack(database_url)
+    try:
+        snapshot = asyncio.run(stack["builder"].build_snapshot())
+        stack["tracker"].bulk_update(snapshot.metrics.items())
+        report = {
+            "global_confidence": stack["tracker"].global_confidence(),
+            "metrics": [
+                {
+                    "key": record.key,
+                    "mean": record.mean,
+                    "stddev": record.stddev,
+                    "updated": record.last_updated.isoformat(),
+                }
+                for record in stack["tracker"].export()
+            ],
+        }
+        typer.echo(json.dumps(report, indent=2, default=str))
+    finally:
+        session = stack["session"]
+        if session is not None:
+            session.close()
 
 
 @seed_app.command("deploy")
