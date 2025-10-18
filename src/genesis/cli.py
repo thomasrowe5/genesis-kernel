@@ -56,6 +56,23 @@ from genesis.metanet.interconnect import FederationProfile
 from genesis.metanet.runtime import get_runtime
 from genesis.reflexion import DigitalTwinBuilder, SimulationChange, TwinSimulator
 from genesis.reflexion.models import SQLMODEL_AVAILABLE
+from genesis.multiverse import (
+    BranchState,
+    MultiverseCoherenceEngine,
+    MultiverseManifold,
+    MultiverseMergeReport,
+    MultiverseObserver,
+)
+from genesis.retrocausal import (
+    RetroConsistencyVerifier,
+    RetrocausalBridge,
+    RetrocausalBridgeReport,
+    RetrocausalInferenceEngine,
+    ReverseSimulationRequest,
+    ReverseSimulator,
+    TimelineCommit,
+    TimelineRepository,
+)
 
 app = typer.Typer(help="Genesis self-optimization utilities")
 cluster_app = typer.Typer(help="Cluster management commands")
@@ -71,6 +88,10 @@ app.add_typer(proposal_app, name="proposal")
 app.add_typer(ledger_app, name="ledger")
 twin_app = typer.Typer(help="Digital twin operations")
 app.add_typer(twin_app, name="twin")
+retro_app = typer.Typer(help="Retrocausal timeline controls")
+multiverse_app = typer.Typer(help="Multiverse synchronisation controls")
+app.add_typer(retro_app, name="retro")
+app.add_typer(multiverse_app, name="multiverse")
 
 
 def _ensure_collective_tables(database_url: Optional[str]) -> None:
@@ -159,6 +180,94 @@ def _build_reflexive_stack(database_url: Optional[str]):
         "planner": planner,
         "introspector": introspector,
         "validator": validator,
+    }
+
+
+_timeline_cache: TimelineRepository | None = None
+_retro_bridge_cache: RetrocausalBridge | None = None
+_retro_verifier_cache: RetroConsistencyVerifier | None = None
+_multiverse_engine_cache: MultiverseCoherenceEngine | None = None
+_multiverse_observer_cache: MultiverseObserver | None = None
+
+
+def _seed_timeline() -> TimelineRepository:
+    commits = [
+        TimelineCommit(
+            commit_id="T-1h",
+            reward=0.71,
+            entropy=0.22,
+            payload={"accuracy": 0.68, "loss": 0.32},
+        ),
+        TimelineCommit(
+            commit_id="T-30m",
+            reward=0.75,
+            entropy=0.18,
+            payload={"accuracy": 0.72, "loss": 0.28},
+        ),
+        TimelineCommit(
+            commit_id="now",
+            reward=0.81,
+            entropy=0.15,
+            payload={"accuracy": 0.78, "loss": 0.22},
+        ),
+    ]
+    return TimelineRepository(commits)
+
+
+def _seed_manifold(timeline: TimelineRepository) -> MultiverseManifold:
+    ordered = timeline.ordered()
+    earliest = ordered[0]
+    latest = ordered[-1]
+    exploratory = {
+        "reward": earliest.reward + 0.04,
+        "entropy": earliest.entropy + 0.05,
+    }
+    stabilised = {
+        "reward": latest.reward - 0.03,
+        "entropy": max(latest.entropy - 0.02, 0.0),
+    }
+    branches = [
+        BranchState("prime", {"reward": latest.reward, "entropy": latest.entropy}),
+        BranchState("exploratory", exploratory),
+        BranchState("stability", stabilised),
+    ]
+    return MultiverseManifold(branches)
+
+
+def _retro_context() -> dict[str, object]:
+    global _timeline_cache
+    global _retro_bridge_cache
+    global _retro_verifier_cache
+    global _multiverse_engine_cache
+    global _multiverse_observer_cache
+
+    if _retro_bridge_cache is None:
+        timeline = _seed_timeline()
+        simulator = ReverseSimulator(timeline)
+        inference = RetrocausalInferenceEngine(simulator, learning_rate=0.25)
+        verifier = RetroConsistencyVerifier(tolerance=0.05)
+        bridge = RetrocausalBridge(simulator, inference, verifier)
+        manifold = _seed_manifold(timeline)
+        engine = MultiverseCoherenceEngine(manifold, epsilon=0.2)
+        observer = MultiverseObserver(manifold, threshold=0.25)
+        _timeline_cache = timeline
+        _retro_bridge_cache = bridge
+        _retro_verifier_cache = verifier
+        _multiverse_engine_cache = engine
+        _multiverse_observer_cache = observer
+
+    assert _timeline_cache is not None
+    assert _retro_bridge_cache is not None
+    assert _retro_verifier_cache is not None
+    assert _multiverse_engine_cache is not None
+    assert _multiverse_observer_cache is not None
+
+    return {
+        "timeline": _timeline_cache,
+        "bridge": _retro_bridge_cache,
+        "verifier": _retro_verifier_cache,
+        "engine": _multiverse_engine_cache,
+        "observer": _multiverse_observer_cache,
     }
 
 
@@ -795,6 +904,95 @@ def sign(
     destination = output or Path(f"{module}-{version}.signature.json")
     destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     typer.echo(f"signature={record.hash_hex} path={destination}")
+
+
+@retro_app.command("run")
+def retro_run(
+    from_commit: str = typer.Option(..., "--from", help="Starting commit identifier"),
+    to_commit: str = typer.Option(..., "--to", help="Target commit identifier"),
+) -> None:
+    context = _retro_context()
+    bridge = context["bridge"]
+    if not isinstance(bridge, RetrocausalBridge):  # pragma: no cover - defensive
+        raise RuntimeError("Retrocausal bridge unavailable")
+
+    async def _execute() -> RetrocausalBridgeReport:
+        request = ReverseSimulationRequest(from_commit=from_commit, to_commit=to_commit)
+        return await bridge.execute(request)
+
+    report = asyncio.run(_execute())
+    typer.echo(
+        json.dumps(
+            {
+                "path": list(report.simulation.path),
+                "reward_delta": report.simulation.reward_delta,
+                "entropy_delta": report.simulation.entropy_delta,
+                "gradients": dict(report.update.gradients),
+                "proof": {"hash": report.proof.run_hash, "valid": report.proof.valid},
+            },
+            indent=2,
+        )
+    )
+
+
+@retro_app.command("verify")
+def retro_verify() -> None:
+    context = _retro_context()
+    verifier = context["verifier"]
+    assert isinstance(verifier, RetroConsistencyVerifier)
+    latest = verifier.chain()
+    if latest is None:
+        typer.echo(json.dumps({"consistency": False, "reason": "no runs"}, indent=2))
+        raise typer.Exit(code=1)
+    typer.echo(json.dumps({"consistency": True, "latest_hash": latest}, indent=2))
+
+
+@multiverse_app.command("merge")
+def multiverse_merge(
+    epsilon: float | None = typer.Option(None, "--epsilon", min=0.0, help="Override merge entropy epsilon"),
+) -> None:
+    context = _retro_context()
+    engine = context["engine"]
+    assert isinstance(engine, MultiverseCoherenceEngine)
+    if epsilon is not None:
+        engine.set_epsilon(epsilon)
+
+    async def _merge() -> MultiverseMergeReport:
+        return await engine.merge()
+
+    report = asyncio.run(_merge())
+    typer.echo(
+        json.dumps(
+            {
+                "coherence_score": report.coherence_score,
+                "merged_branch": {
+                    "branch_id": report.merged_branch.branch_id,
+                    "metrics": dict(report.merged_branch.metrics),
+                },
+            },
+            indent=2,
+        )
+    )
+
+
+@multiverse_app.command("metrics")
+def multiverse_metrics() -> None:
+    context = _retro_context()
+    engine = context["engine"]
+    observer = context["observer"]
+    assert isinstance(engine, MultiverseCoherenceEngine)
+    assert isinstance(observer, MultiverseObserver)
+    coherence = engine.coherence_score()
+    alerts = [
+        {"branch_a": alert.branch_a, "branch_b": alert.branch_b, "delta": alert.delta}
+        for alert in observer.scan()
+    ]
+    payload = {
+        "coherence": coherence,
+        "branches": engine.summary(),
+        "alerts": alerts,
+    }
+    typer.echo(json.dumps(payload, indent=2))
 
 
 @app.command()

@@ -3,6 +3,49 @@ from __future__ import annotations
 
 from prometheus_client import Counter, Gauge, Histogram
 
+# Retrocausal intelligence metrics.
+genesis_retro_runs_total = Counter(
+    "genesis_retro_runs_total",
+    "Total number of retrocausal runs grouped by status.",
+    labelnames=("status",),
+)
+
+genesis_retro_entropy_delta = Histogram(
+    "genesis_retro_entropy_delta",
+    "Aggregated entropy delta observed during retro simulations.",
+    buckets=(
+        -1.0,
+        -0.5,
+        -0.1,
+        -0.05,
+        0.0,
+        0.05,
+        0.1,
+        0.5,
+        1.0,
+    ),
+)
+
+genesis_retro_consistency_score = Gauge(
+    "genesis_retro_consistency_score",
+    "Latest retrocausal consistency verification score.",
+)
+
+genesis_paradox_preventions_total = Counter(
+    "genesis_paradox_preventions_total",
+    "Retrocausal paradox prevention events.",
+)
+
+genesis_multiverse_branches_total = Gauge(
+    "genesis_multiverse_branches_total",
+    "Number of active branches represented in the multiverse manifold.",
+)
+
+genesis_multiverse_coherence_score = Gauge(
+    "genesis_multiverse_coherence_score",
+    "Coherence score emitted after multiverse merges.",
+)
+
 # Reflexive intelligence metrics.
 genesis_reflexive_cycles_total = Counter(
     "genesis_reflexive_cycles_total",
@@ -196,6 +239,63 @@ genesis_knowledge_nodes_total = Gauge(
     "Number of nodes tracked in the knowledge graph.",
 )
 
+# Global adaptation and cosmic coordination instrumentation.
+genesis_adaptation_cycles_total = Counter(
+    "genesis_adaptation_cycles_total",
+    "Number of adaptation cycles executed by the planetary intelligence engine.",
+)
+
+genesis_global_energy_mwh = Gauge(
+    "genesis_global_energy_mwh",
+    "Estimated global energy consumption in megawatt hours.",
+)
+
+genesis_latency_mean_ms = Gauge(
+    "genesis_latency_mean_ms",
+    "Mean latency across planetary services in milliseconds.",
+)
+
+genesis_peace_index = Gauge(
+    "genesis_peace_index",
+    "Composite peace index aggregated from planetary telemetry.",
+)
+
+genesis_cosmic_latency_seconds = Histogram(
+    "genesis_cosmic_latency_seconds",
+    "Latency observations recorded while merging cosmic consensus states.",
+    buckets=(0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 20.0, 60.0, 120.0),
+)
+
+genesis_branches_total = Counter(
+    "genesis_branches_total",
+    "Cosmic branches propagated through the expansion network.",
+)
+
+genesis_chronicle_events_total = Counter(
+    "genesis_chronicle_events_total",
+    "Chronicle events recorded by the cosmic service.",
+)
+
+genesis_information_entropy_ratio = Gauge(
+    "genesis_information_entropy_ratio",
+    "Entropy ratio observed across cosmic signal propagation.",
+)
+
+genesis_reconciliation_cycles_total = Counter(
+    "genesis_reconciliation_cycles_total",
+    "Reconciliation cycles executed by the propagation service.",
+)
+
+genesis_seeds_total = Counter(
+    "genesis_seeds_total",
+    "Seed launches recorded by the cosmic seed archive.",
+)
+
+genesis_vault_records_total = Counter(
+    "genesis_vault_records_total",
+    "Vault records replicated across the cosmic archive.",
+)
+
 # Civilization layer instrumentation.
 genesis_federation_peers_total = Gauge(
     "genesis_federation_peers_total",
@@ -230,7 +330,44 @@ genesis_self_repair_events_total = Counter(
     "Self repair events triggered by lifecycle management.",
 )
 
+genesis_exchanges_total = Counter(
+    "genesis_exchanges_total",
+    "Cross-federation exchanges executed across the meta-network.",
+)
+
+genesis_metanet_federations_total = Gauge(
+    "genesis_metanet_federations_total",
+    "Federations currently connected through the meta-network interconnect.",
+)
+
+genesis_treaties_active_total = Gauge(
+    "genesis_treaties_active_total",
+    "Active treaties negotiated across federations.",
+)
+
+genesis_law_cases_total = Counter(
+    "genesis_law_cases_total",
+    "Law cases adjudicated by the planetary courts.",
+)
+
 __all__ = [
+    "genesis_retro_runs_total",
+    "genesis_retro_entropy_delta",
+    "genesis_retro_consistency_score",
+    "genesis_paradox_preventions_total",
+    "genesis_multiverse_branches_total",
+    "genesis_multiverse_coherence_score",
+    "genesis_cosmic_latency_seconds",
+    "genesis_adaptation_cycles_total",
+    "genesis_global_energy_mwh",
+    "genesis_latency_mean_ms",
+    "genesis_peace_index",
+    "genesis_branches_total",
+    "genesis_chronicle_events_total",
+    "genesis_information_entropy_ratio",
+    "genesis_reconciliation_cycles_total",
+    "genesis_seeds_total",
+    "genesis_vault_records_total",
     "genesis_eval_duration_seconds",
     "genesis_module_score",
     "genesis_replacements_total",
@@ -262,6 +399,10 @@ __all__ = [
     "genesis_ethics_violations_total",
     "genesis_replica_boots_total",
     "genesis_self_repair_events_total",
+    "genesis_exchanges_total",
+    "genesis_metanet_federations_total",
+    "genesis_treaties_active_total",
+    "genesis_law_cases_total",
     "genesis_reflexive_cycles_total",
     "genesis_simulations_total",
     "genesis_reflection_confidence_mean",
