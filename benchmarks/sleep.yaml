@@ -1,0 +1,6 @@
+name: sleep
+cases:
+  - duration: 0.5
+expected_accuracy: 1.0
+expected_latency: 0.5
+expected_stability: 0.9
